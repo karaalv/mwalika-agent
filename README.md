@@ -51,21 +51,21 @@ Mwalika operates as a general support agent for the eCitizen ecosystem. It assis
 
 ## Project Structure
 
-- **`agent/`**  
+- **`agent/`**
   Contains the high-level agent logic, including intent handling, retrieval coordination, response structuring, and orchestration.
 
-- **`api/`**  
+- **`api/`**
   Exposes endpoints and WebSocket interfaces used by the frontend to communicate with the agent.
 
-- **`databases/`**  
+- **`databases/`**
   Houses all database integration logic, including:
   - Vector search operations (Qdrant)
   - General-purpose storage and persistence (MongoDB)
 
-- **`corpus/`**  
+- **`corpus/`**
   Contains all processing logic required to transform the raw dataset into the structured context corpus used by the agent. This includes embedding generation and pushing indexed vectors to the vector database.
 
-- **`data/`**  
+- **`data/`**
   Stores the raw collected dataset of ministries, agencies, and services. This acts as the immutable input layer for corpus processing.
 
 Each major directory contains its own `README.md` explaining its role and internal structure.
