@@ -83,14 +83,15 @@ It stores:
 ```txt
 mongodb
 ├── Database: mwalika_corpus
-│ ├── ministries
-│ ├── departments
-│ ├── agencies
-│ ├── services
-│ └── faqs
+│ ├── Collection: ministries
+│ ├── Collection: departments
+│ ├── Collection: agencies
+│ ├── Collection: services
+│ └── Collection: faqs
 └── Database: chats
-├── sessions
-└── memories
+│ ├── Collection: sessions
+│ └── Collection: memories
+...
 ```
 
 Indexes may be added as performance requirements evolve.

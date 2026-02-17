@@ -3,6 +3,7 @@ This file contains helper functions
 for Sentry.
 """
 
+from enum import Enum
 from typing import Any
 
 import sentry_sdk
@@ -11,6 +12,13 @@ import sentry_sdk
 
 _MAX_TAG_LEN = 64
 _MAX_CRUMB_MSG = 120
+
+
+class BreadcrumbLevel(Enum):
+	INFO = 'info'
+	ERROR = 'error'
+	WARNING = 'warning'
+	DEBUG = 'debug'
 
 
 def set_tags(
@@ -35,7 +43,7 @@ def set_tags(
 def add_breadcrumb(
 	category: str,
 	message: str,
-	level: str = 'info',
+	level: BreadcrumbLevel = BreadcrumbLevel.INFO,
 	data: dict[str, Any] | None = None,
 ) -> None:
 	msg = message.strip()
@@ -45,6 +53,6 @@ def add_breadcrumb(
 	sentry_sdk.add_breadcrumb(
 		category=category,
 		message=msg,
-		level=level,
+		level=level.value,
 		data=data or {},
 	)

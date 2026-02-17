@@ -7,7 +7,7 @@ system.
 from exceptions.core import ApplicationException
 
 
-class MongoException(ApplicationException):
+class MongoDBException(ApplicationException):
 	"""
 	Exception raised for errors related to
 	MongoDB operations.

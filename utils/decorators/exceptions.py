@@ -14,10 +14,14 @@ from typing import Any, ParamSpec, TypeVar
 import sentry_sdk
 
 from exceptions.core import (
-    ApplicationException,
-    ErrorContext,
+	ApplicationException,
+	ErrorContext,
 )
-from observability.sentry.helpers import set_tags
+from observability.sentry.helpers import (
+	BreadcrumbLevel,
+	add_breadcrumb,
+	set_tags,
+)
 
 # Decorator type definitions
 P = ParamSpec('P')
@@ -27,152 +31,174 @@ logger = logging.getLogger(__name__)
 
 
 def guard(
-    operation: str,
-    component: str,
-    code: str,
-    meta: dict[str, Any] | None = None,
-    wrap_cls: type[
-        ApplicationException
-    ] = ApplicationException,
-    map_exc: Callable[
-        [BaseException], type[ApplicationException]
-    ]
-    | None = None,
+	operation: str,
+	component: str,
+	code: str,
+	meta: dict[str, Any] | None = None,
+	wrap_cls: type[
+		ApplicationException
+	] = ApplicationException,
+	map_exc: Callable[
+		[BaseException], type[ApplicationException]
+	]
+	| None = None,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    def decorator(fn: Callable[P, R]) -> Callable[P, R]:
-        @wraps(fn)
-        def wrapped(*a: P.args, **kw: P.kwargs) -> R:
-            tags = {
-                'component': component,
-                'operation': operation,
-                'code': code,
-            }
+	def decorator(fn: Callable[P, R]) -> Callable[P, R]:
+		@wraps(fn)
+		def wrapped(*a: P.args, **kw: P.kwargs) -> R:
+			tags = {
+				'component': component,
+				'operation': operation,
+				'code': code,
+			}
 
-            try:
-                return fn(*a, **kw)
+			try:
+				return fn(*a, **kw)
 
-            except ApplicationException as e:
-                # All subclasses land here
-                logger.exception(
-                    'App error %s:%s (%s) in %s',
-                    component,
-                    operation,
-                    code,
-                    fn.__name__,
-                )
-                with sentry_sdk.push_scope():
-                    set_tags(tags, metadata=meta)
-                    sentry_sdk.capture_exception(e)
-                raise
+			except ApplicationException as e:
+				# All subclasses land here
+				logger.exception(
+					'App error %s:%s (%s) in %s',
+					component,
+					operation,
+					code,
+					fn.__name__,
+				)
+				# Add tags and breadcrumbs for sentry
+				with sentry_sdk.push_scope():
+					set_tags(tags, metadata=meta)
+					add_breadcrumb(
+						category=f'{component}:{operation}',
+						message=f'Failure in {fn.__name__}',
+						level=BreadcrumbLevel.ERROR,
+					)
+					sentry_sdk.capture_exception(e)
+				raise
 
-            except Exception as e:
-                logger.exception(
-                    'Error %s:%s (%s) in %s',
-                    component,
-                    operation,
-                    code,
-                    fn.__name__,
-                )
-                with sentry_sdk.push_scope():
-                    set_tags(tags, metadata=meta)
-                    sentry_sdk.capture_exception(e)
+			except Exception as e:
+				logger.exception(
+					'Error %s:%s (%s) in %s',
+					component,
+					operation,
+					code,
+					fn.__name__,
+				)
+				# Add tags and breadcrumbs for sentry
+				with sentry_sdk.push_scope():
+					set_tags(tags, metadata=meta)
+					add_breadcrumb(
+						category=f'{component}:{operation}',
+						message=f'Failure in {fn.__name__}',
+						level=BreadcrumbLevel.ERROR,
+					)
+					sentry_sdk.capture_exception(e)
 
-                cls = wrap_cls
-                if map_exc is not None:
-                    cls = map_exc(e)
+				cls = wrap_cls
+				if map_exc is not None:
+					cls = map_exc(e)
 
-                raise cls(
-                    message=(
-                        f'Error in '
-                        f'{component}:{operation}'
-                    ),
-                    code=code,
-                    context=ErrorContext(
-                        operation=operation,
-                        component=component,
-                        metadata=meta,
-                    ),
-                    cause=e,
-                ) from e
+				raise cls(
+					message=(
+						f'Error in {component}:{operation}'
+					),
+					code=code,
+					context=ErrorContext(
+						operation=operation,
+						component=component,
+						metadata=meta,
+					),
+					cause=e,
+				) from e
 
-        return wrapped
+		return wrapped
 
-    return decorator
+	return decorator
 
 
 def guard_async(
-    operation: str,
-    component: str,
-    code: str,
-    meta: dict[str, Any] | None = None,
-    wrap_cls: type[
-        ApplicationException
-    ] = ApplicationException,
-    map_exc: Callable[
-        [BaseException], type[ApplicationException]
-    ]
-    | None = None,
+	operation: str,
+	component: str,
+	code: str,
+	meta: dict[str, Any] | None = None,
+	wrap_cls: type[
+		ApplicationException
+	] = ApplicationException,
+	map_exc: Callable[
+		[BaseException], type[ApplicationException]
+	]
+	| None = None,
 ) -> Callable[
-    [Callable[P, Awaitable[R]]],
-    Callable[P, Awaitable[R]],
+	[Callable[P, Awaitable[R]]],
+	Callable[P, Awaitable[R]],
 ]:
-    def deco(
-        fn: Callable[P, Awaitable[R]],
-    ) -> Callable[P, Awaitable[R]]:
-        @wraps(fn)
-        async def wrapped(*a: P.args, **kw: P.kwargs) -> R:
-            tags = {
-                'component': component,
-                'operation': operation,
-                'code': code,
-            }
+	def deco(
+		fn: Callable[P, Awaitable[R]],
+	) -> Callable[P, Awaitable[R]]:
+		@wraps(fn)
+		async def wrapped(*a: P.args, **kw: P.kwargs) -> R:
+			tags = {
+				'component': component,
+				'operation': operation,
+				'code': code,
+			}
 
-            try:
-                return await fn(*a, **kw)
+			try:
+				return await fn(*a, **kw)
 
-            except ApplicationException as e:
-                logger.exception(
-                    'App error %s:%s (%s) in %s',
-                    component,
-                    operation,
-                    code,
-                    fn.__name__,
-                )
-                with sentry_sdk.push_scope():
-                    set_tags(tags, metadata=meta)
-                    sentry_sdk.capture_exception(e)
-                raise
+			except ApplicationException as e:
+				logger.exception(
+					'App error %s:%s (%s) in %s',
+					component,
+					operation,
+					code,
+					fn.__name__,
+				)
+				# Add tags and breadcrumbs for sentry
+				with sentry_sdk.push_scope():
+					set_tags(tags, metadata=meta)
+					add_breadcrumb(
+						category=f'{component}:{operation}',
+						message=f'Failure in {fn.__name__}',
+						level=BreadcrumbLevel.ERROR,
+					)
+					sentry_sdk.capture_exception(e)
+				raise
 
-            except Exception as e:
-                logger.exception(
-                    'Error %s:%s (%s) in %s',
-                    component,
-                    operation,
-                    code,
-                    fn.__name__,
-                )
-                with sentry_sdk.push_scope():
-                    set_tags(tags, metadata=meta)
-                    sentry_sdk.capture_exception(e)
+			except Exception as e:
+				logger.exception(
+					'Error %s:%s (%s) in %s',
+					component,
+					operation,
+					code,
+					fn.__name__,
+				)
+				# Add tags and breadcrumbs for sentry
+				with sentry_sdk.push_scope():
+					set_tags(tags, metadata=meta)
+					add_breadcrumb(
+						category=f'{component}:{operation}',
+						message=f'Failure in {fn.__name__}',
+						level=BreadcrumbLevel.ERROR,
+					)
+					sentry_sdk.capture_exception(e)
 
-                cls = wrap_cls
-                if map_exc is not None:
-                    cls = map_exc(e)
+				cls = wrap_cls
+				if map_exc is not None:
+					cls = map_exc(e)
 
-                raise cls(
-                    message=(
-                        f'Error in '
-                        f'{component}:{operation}'
-                    ),
-                    code=code,
-                    context=ErrorContext(
-                        operation=operation,
-                        component=component,
-                        metadata=meta,
-                    ),
-                    cause=e,
-                ) from e
+				raise cls(
+					message=(
+						f'Error in {component}:{operation}'
+					),
+					code=code,
+					context=ErrorContext(
+						operation=operation,
+						component=component,
+						metadata=meta,
+					),
+					cause=e,
+				) from e
 
-        return wrapped
+		return wrapped
 
-    return deco
+	return deco
