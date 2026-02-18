@@ -23,6 +23,13 @@ class FAQEntry(BaseModel):
 			'`question-answer`.'
 		),
 	)
+	qdrant_id: str | None = Field(
+		default=None,
+		description=(
+			'Unique identifier for the corresponding point '
+			'in QdrantDB.'
+		),
+	)
 	question: str = Field(
 		...,
 		description=(

@@ -131,3 +131,16 @@ def set_qdrant_client(
 	"""Sets the global Qdrant client."""
 	global _qdrant_client
 	_qdrant_client = client
+
+
+# Session management functions
+
+
+async def is_qdrant_connected() -> bool:
+	"""Checks if the Qdrant client is connected."""
+	client = get_qdrant_client()
+	try:
+		await client.get_collections()
+		return True
+	except Exception:
+		return False

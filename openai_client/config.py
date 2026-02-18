@@ -20,6 +20,8 @@ _openai_client: AsyncOpenAI | None = None
 
 # --- Client Management ---
 
+# Connection management functions
+
 
 def start_openai_client() -> None:
 	"""Initializes the global OpenAI client."""
@@ -33,6 +35,22 @@ def start_openai_client() -> None:
 			style=LogStyle.SUCCESS,
 			prefix='openai.config',
 		)
+
+
+async def close_openai_client() -> None:
+	"""Closes the global OpenAI client."""
+	openai = get_openai_client()
+	if openai is not None:
+		await openai.close()
+		set_openai_client(None)
+		cprint(
+			'OpenAI client closed.',
+			style=LogStyle.SUCCESS,
+			prefix='openai.config',
+		)
+
+
+# Client accessors
 
 
 def get_openai_client() -> AsyncOpenAI:
@@ -57,14 +75,15 @@ def set_openai_client(client: AsyncOpenAI | None) -> None:
 	_openai_client = client
 
 
-async def close_openai_client() -> None:
-	"""Closes the global OpenAI client."""
-	openai = get_openai_client()
-	if openai is not None:
-		await openai.close()
-		set_openai_client(None)
-		cprint(
-			'OpenAI client closed.',
-			style=LogStyle.SUCCESS,
-			prefix='openai.config',
-		)
+# Session management functions
+
+
+async def is_openai_connected() -> bool:
+	"""Checks if the OpenAI client is connected."""
+	client = get_openai_client()
+	try:
+		# Perform a simple API call to check connectivity
+		await client.models.list()
+		return True
+	except Exception:
+		return False

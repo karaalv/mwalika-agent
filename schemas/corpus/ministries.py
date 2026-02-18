@@ -24,6 +24,13 @@ class MinistryEntry(BaseModel):
 			'ministry name.'
 		),
 	)
+	qdrant_id: str | None = Field(
+		default=None,
+		description=(
+			'Unique identifier for the corresponding point '
+			'in QdrantDB.'
+		),
+	)
 	ministry_name: str = Field(
 		...,
 		description=(
@@ -31,11 +38,17 @@ class MinistryEntry(BaseModel):
 			'platform.'
 		),
 	)
-	ministry_description: str = Field(
+	ministry_description: str | None = Field(
 		...,
 		description=('Public ministry description.'),
 	)
-
+	ministry_description_summary: str | None = Field(
+		default=None,
+		description=(
+			'Concise summary of the ministry description, '
+			'limited to 150 tokens.'
+		),
+	)
 	reported_agency_count: int | None = Field(
 		...,
 		description=(

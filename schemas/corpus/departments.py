@@ -29,6 +29,13 @@ class DepartmentEntry(BaseModel):
 		...,
 		description=('Identifier of parent ministry.'),
 	)
+	qdrant_id: str | None = Field(
+		default=None,
+		description=(
+			'Unique identifier for the corresponding point '
+			'in QdrantDB.'
+		),
+	)
 	department_name: str = Field(
 		...,
 		description=(

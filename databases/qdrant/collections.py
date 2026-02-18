@@ -28,16 +28,33 @@ async def ensure_collection_exists(
 	name exists, creating it if necessary.
 	"""
 	client = get_qdrant_client()
-	exists = await client.get_collection(collection_name)
+	exists = await collection_exists(collection_name)
 	if not exists:
 		try:
-			await client.recreate_collection(
+			result = await client.create_collection(
 				collection_name=collection_name,
-				vector_params=VectorParams(
+				vectors_config=VectorParams(
 					size=VECTOR_SIZE,
 					distance=Distance.COSINE,
 				),
 			)
+			if not result:
+				raise QdrantException(
+					message=(
+						f'Failed to create collection '
+						f'"{collection_name}".'
+					),
+					code='collection_creation_failed',
+					context=ErrorContext(
+						operation='ensure_collection_exists',
+						component='qdrant.collection',
+						metadata={
+							'collection_name': (
+								collection_name
+							)
+						},
+					),
+				)
 		except Exception as e:
 			raise QdrantException(
 				message=(
@@ -73,6 +90,8 @@ async def collection_exists(
 		)
 		return exists is not None
 	except Exception as e:
+		if 'not found' in str(e).lower():
+			return False
 		raise QdrantException(
 			message=(
 				f'Failed to check existence of collection '

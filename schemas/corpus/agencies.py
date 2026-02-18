@@ -41,6 +41,13 @@ class AgencyEntry(BaseModel):
 		...,
 		description=('Identifier of parent department.'),
 	)
+	qdrant_id: str | None = Field(
+		default=None,
+		description=(
+			'Unique identifier for the corresponding point '
+			'in QdrantDB.'
+		),
+	)
 
 	agency_name: str = Field(
 		...,
@@ -49,15 +56,22 @@ class AgencyEntry(BaseModel):
 			'eCitizen platform.'
 		),
 	)
-	agency_description: str = Field(
+	agency_description: str | None = Field(
 		...,
 		description=('Public agency description.'),
 	)
-	logo_url: str = Field(
+	agency_description_summary: str | None = Field(
+		default=None,
+		description=(
+			'Concise summary of the agency description, '
+			'limited to 150 tokens.'
+		),
+	)
+	logo_url: str | None = Field(
 		...,
 		description=('URL of agency logo image.'),
 	)
-	agency_url: str = Field(
+	agency_url: str | None = Field(
 		...,
 		description=(
 			'URL of agency page from the eCitizen platform.'

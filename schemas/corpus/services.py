@@ -38,6 +38,13 @@ class ServiceEntry(BaseModel):
 		...,
 		description=('Identifier of parent ministry.'),
 	)
+	qdrant_id: str | None = Field(
+		default=None,
+		description=(
+			'Unique identifier for the corresponding point '
+			'in QdrantDB.'
+		),
+	)
 
 	service_name: str = Field(
 		...,
