@@ -49,9 +49,7 @@ async def ensure_collection_exists(
 						operation='ensure_collection_exists',
 						component='qdrant.collection',
 						metadata={
-							'collection_name': (
-								collection_name
-							)
+							'collection_name': (collection_name)
 						},
 					),
 				)
@@ -65,9 +63,7 @@ async def ensure_collection_exists(
 				context=ErrorContext(
 					operation='ensure_collection_exists',
 					component='qdrant.collection',
-					metadata={
-						'collection_name': collection_name
-					},
+					metadata={'collection_name': collection_name},
 				),
 				cause=e,
 			) from e
@@ -85,9 +81,7 @@ async def collection_exists(
 	"""
 	client = get_qdrant_client()
 	try:
-		exists = await client.get_collection(
-			collection_name
-		)
+		exists = await client.get_collection(collection_name)
 		return exists is not None
 	except Exception as e:
 		if 'not found' in str(e).lower():
@@ -101,9 +95,7 @@ async def collection_exists(
 			context=ErrorContext(
 				operation='collection_exists',
 				component='qdrant.collection',
-				metadata={
-					'collection_name': collection_name
-				},
+				metadata={'collection_name': collection_name},
 			),
 			cause=e,
 		) from e

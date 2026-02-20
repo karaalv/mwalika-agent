@@ -29,9 +29,7 @@ from shared.logging import (
 	format_exception,
 )
 
-load_dotenv(
-	override=True, dotenv_path=os.path.abspath('.env')
-)
+load_dotenv(override=True, dotenv_path=os.path.abspath('.env'))
 
 # --- Helpers ---
 

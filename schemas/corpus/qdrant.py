@@ -18,6 +18,7 @@ class CorpusItemType(str, Enum):
 	DEPARTMENT = 'department'
 	AGENCY = 'agency'
 	SERVICE = 'service'
+	ANY = 'any'
 
 
 class CorpusPayload(BaseModel):
@@ -33,8 +34,7 @@ class CorpusPayload(BaseModel):
 	type: CorpusItemType = Field(
 		...,
 		description=(
-			'Type of the corpus item, e.g., '
-			'ministry, department.'
+			'Type of the corpus item, e.g., ministry, department.'
 		),
 	)
 	schema_version: str = Field(

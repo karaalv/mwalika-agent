@@ -27,9 +27,7 @@ def start_openai_client() -> None:
 	"""Initializes the global OpenAI client."""
 	global _openai_client
 	if _openai_client is None:
-		_openai_client = AsyncOpenAI(
-			api_key=getenv('OPENAI_API_KEY')
-		)
+		_openai_client = AsyncOpenAI(api_key=getenv('OPENAI_API_KEY'))
 		cprint(
 			'OpenAI client initialized.',
 			style=LogStyle.SUCCESS,

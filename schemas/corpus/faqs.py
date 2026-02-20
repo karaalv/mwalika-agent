@@ -19,8 +19,7 @@ class FAQEntry(BaseModel):
 	faq_id: str = Field(
 		...,
 		description=(
-			'Identifier derived from hash of '
-			'`question-answer`.'
+			'Identifier derived from hash of `question-answer`.'
 		),
 	)
 	qdrant_id: str | None = Field(
@@ -33,8 +32,7 @@ class FAQEntry(BaseModel):
 	question: str = Field(
 		...,
 		description=(
-			'FAQ question text as listed on '
-			'the eCitizen platform.'
+			'FAQ question text as listed on the eCitizen platform.'
 		),
 	)
 	answer: str = Field(

@@ -62,8 +62,7 @@ def start_qdrant_client() -> None:
 		except Exception as e:
 			raise QdrantException(
 				message=(
-					f'Failed to initialize '
-					f'Qdrant client: {str(e)}'
+					f'Failed to initialize Qdrant client: {str(e)}'
 				),
 				code='qdrant_client_init_failed',
 				context=ErrorContext(
@@ -93,10 +92,7 @@ async def close_qdrant_client() -> None:
 			)
 		except Exception as e:
 			raise QdrantException(
-				message=(
-					f'Failed to close Qdrant '
-					f'client: {str(e)}'
-				),
+				message=(f'Failed to close Qdrant client: {str(e)}'),
 				code='qdrant_client_close_failed',
 				context=ErrorContext(
 					operation='close_qdrant_client',

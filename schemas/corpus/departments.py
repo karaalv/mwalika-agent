@@ -21,8 +21,7 @@ class DepartmentEntry(BaseModel):
 	department_id: str = Field(
 		...,
 		description=(
-			'Identifier derived from '
-			'`ministry_id-department_name`.'
+			'Identifier derived from `ministry_id-department_name`.'
 		),
 	)
 	ministry_id: str = Field(
@@ -39,23 +38,20 @@ class DepartmentEntry(BaseModel):
 	department_name: str = Field(
 		...,
 		description=(
-			'Department name as listed on '
-			'the eCitizen platform.'
+			'Department name as listed on the eCitizen platform.'
 		),
 	)
 
 	observed_agency_count: int | None = Field(
 		...,
 		description=(
-			'Number of agencies observed '
-			'under the department.'
+			'Number of agencies observed under the department.'
 		),
 	)
 	observed_service_count: int | None = Field(
 		...,
 		description=(
-			'Number of services observed '
-			'under the department.'
+			'Number of services observed under the department.'
 		),
 	)
 

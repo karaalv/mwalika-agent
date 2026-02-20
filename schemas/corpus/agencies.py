@@ -28,8 +28,7 @@ class AgencyEntry(BaseModel):
 	agency_name_hash: str = Field(
 		...,
 		description=(
-			'Identifier derived from '
-			'normalised agency name only.'
+			'Identifier derived from normalised agency name only.'
 		),
 	)
 
@@ -52,8 +51,7 @@ class AgencyEntry(BaseModel):
 	agency_name: str = Field(
 		...,
 		description=(
-			'Agency name as listed on the '
-			'eCitizen platform.'
+			'Agency name as listed on the eCitizen platform.'
 		),
 	)
 	agency_description: str | None = Field(
@@ -79,9 +77,7 @@ class AgencyEntry(BaseModel):
 	)
 	observed_service_count: int | None = Field(
 		...,
-		description=(
-			'Number of services observed under the agency.'
-		),
+		description=('Number of services observed under the agency.'),
 	)
 	ministry_departments_agencies_url: str = Field(
 		...,

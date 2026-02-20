@@ -6,6 +6,11 @@ Mwalika Agent system.
 
 from typing import Literal, TypeVar
 
+from openai import AsyncStream
+from openai.types.responses import (
+	ResponseStreamEvent,
+	ToolParam,
+)
 from pydantic import BaseModel
 
 from exceptions.core import ErrorContext
@@ -60,9 +65,7 @@ async def create_embedding(
 					context=ErrorContext(
 						operation='create_embedding',
 						component='openai_client',
-						metadata={
-							'input_length': len(input)
-						},
+						metadata={'input_length': len(input)},
 					),
 				)
 			return embedding
@@ -81,9 +84,7 @@ async def normal_response(
 	system_prompt: str,
 	user_input: str,
 	model: str = 'gpt-5-mini',
-	effort: Literal[
-		'minimal', 'low', 'medium', 'high'
-	] = 'medium',
+	effort: Literal['minimal', 'low', 'medium', 'high'] = 'medium',
 	verbosity: Literal['low', 'medium', 'high'] = 'medium',
 ) -> str:
 	"""
@@ -186,8 +187,7 @@ async def structured_response(
 			if not output:
 				raise OpenAIException(
 					message=(
-						'Failed to generate structured '
-						'response.'
+						'Failed to generate structured response.'
 					),
 					code='structured_response_failed',
 					context=ErrorContext(
@@ -206,8 +206,7 @@ async def structured_response(
 			if not isinstance(output, response_format):
 				raise OpenAIException(
 					message=(
-						'Response does not match expected '
-						'format.'
+						'Response does not match expected format.'
 					),
 					code='response_format_mismatch',
 					context=ErrorContext(
@@ -219,10 +218,38 @@ async def structured_response(
 							'response_format': (
 								response_format.__name__
 							),
-							'output_type': type(
-								output
-							).__name__,
+							'output_type': type(output).__name__,
 						},
 					),
 				)
 			return output
+
+
+async def agent_response_stream(
+	system_prompt: str,
+	user_input: str,
+	tools: list[ToolParam],
+	model: str = 'gpt-5-mini',
+	effort: Literal['minimal', 'low', 'medium', 'high'] = 'medium',
+	verbosity: Literal['low', 'medium', 'high'] = 'medium',
+) -> AsyncStream[ResponseStreamEvent]:
+	"""
+	Returns a stream of responses from OpenAI
+	for the agent, including tool calls and outputs.
+	"""
+	openai = get_openai_client()
+	semaphore = get_openai_semaphore()
+	limiter = get_openai_response_limiter()
+	async with semaphore:
+		async with limiter:
+			response_stream = await openai.responses.create(
+				model=model,
+				instructions=system_prompt,
+				input=user_input,
+				tools=tools,
+				reasoning={'effort': effort},
+				text={'verbosity': verbosity},
+				timeout=OPENAI_RESPONSE_TIMEOUT,
+				stream=True,
+			)
+			return response_stream

@@ -44,9 +44,7 @@ async def test_structured_response():
 
 	response = await structured_response(
 		system_prompt='You are a helpful assistant.',
-		user_prompt=(
-			'Can you provide a summary of the latest news?'
-		),
+		user_prompt=('Can you provide a summary of the latest news?'),
 		response_format=TestOpenAIClient,
 	)
 	assert isinstance(response, TestOpenAIClient)

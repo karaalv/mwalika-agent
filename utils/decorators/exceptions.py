@@ -35,12 +35,8 @@ def guard(
 	component: str,
 	code: str,
 	meta: dict[str, Any] | None = None,
-	wrap_cls: type[
-		ApplicationException
-	] = ApplicationException,
-	map_exc: Callable[
-		[BaseException], type[ApplicationException]
-	]
+	wrap_cls: type[ApplicationException] = ApplicationException,
+	map_exc: Callable[[BaseException], type[ApplicationException]]
 	| None = None,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
 	def decorator(fn: Callable[P, R]) -> Callable[P, R]:
@@ -98,9 +94,7 @@ def guard(
 					cls = map_exc(e)
 
 				raise cls(
-					message=(
-						f'Error in {component}:{operation}'
-					),
+					message=(f'Error in {component}:{operation}'),
 					code=code,
 					context=ErrorContext(
 						operation=operation,
@@ -120,12 +114,8 @@ def guard_async(
 	component: str,
 	code: str,
 	meta: dict[str, Any] | None = None,
-	wrap_cls: type[
-		ApplicationException
-	] = ApplicationException,
-	map_exc: Callable[
-		[BaseException], type[ApplicationException]
-	]
+	wrap_cls: type[ApplicationException] = ApplicationException,
+	map_exc: Callable[[BaseException], type[ApplicationException]]
 	| None = None,
 ) -> Callable[
 	[Callable[P, Awaitable[R]]],
@@ -187,9 +177,7 @@ def guard_async(
 					cls = map_exc(e)
 
 				raise cls(
-					message=(
-						f'Error in {component}:{operation}'
-					),
+					message=(f'Error in {component}:{operation}'),
 					code=code,
 					context=ErrorContext(
 						operation=operation,

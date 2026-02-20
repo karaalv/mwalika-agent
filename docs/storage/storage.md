@@ -122,7 +122,7 @@ The `chats` database stores conversation state and session management data.
 Stores metadata about active and historical chat sessions.
 
 ```typescript
-interface ChatSession {
+interface AgentSession {
     session_id: string;
     user_id: string;
     chat_name: string;
@@ -142,7 +142,7 @@ Each message is stored as a separate document to allow:
 - Streamed updates.
 
 ```typescript
-interface ChatMemory {
+interface AgentMemory {
     session_id: string;
     user_id: string;
     message_id: string;
@@ -152,7 +152,7 @@ interface ChatMemory {
 }
 
 interface MemoryContent {
-    type: 'text' | 'image';
+    type: 'text' | 'image' | 'link';
     payload: string;
 }
 ```

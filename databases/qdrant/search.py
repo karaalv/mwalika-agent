@@ -23,11 +23,13 @@ from utils.decorators.exceptions import guard_async
 # --- Search helpers ---
 
 
-def _type_filter(item_type: CorpusItemType) -> Filter:
+def _type_filter(item_type: CorpusItemType) -> Filter | None:
 	"""
 	Creates a Qdrant filter for the
 	specified CorpusItemType.
 	"""
+	if item_type == CorpusItemType.ANY:
+		return None
 	return Filter(
 		must=[
 			FieldCondition(

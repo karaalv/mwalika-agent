@@ -20,8 +20,7 @@ class MinistryEntry(BaseModel):
 	ministry_id: str = Field(
 		...,
 		description=(
-			'Identifier derived from normalised '
-			'ministry name.'
+			'Identifier derived from normalised ministry name.'
 		),
 	)
 	qdrant_id: str | None = Field(
@@ -34,8 +33,7 @@ class MinistryEntry(BaseModel):
 	ministry_name: str = Field(
 		...,
 		description=(
-			'Ministry name as listed on the eCitizen '
-			'platform.'
+			'Ministry name as listed on the eCitizen platform.'
 		),
 	)
 	ministry_description: str | None = Field(
@@ -52,34 +50,26 @@ class MinistryEntry(BaseModel):
 	reported_agency_count: int | None = Field(
 		...,
 		description=(
-			'Agency count reported by the eCitizen '
-			'platform.'
+			'Agency count reported by the eCitizen platform.'
 		),
 	)
 	observed_agency_count: int | None = Field(
 		...,
-		description=(
-			'Agency count observed in the dataset.'
-		),
+		description=('Agency count observed in the dataset.'),
 	)
 	reported_service_count: int | None = Field(
 		...,
 		description=(
-			'Service count reported by the eCitizen '
-			'platform.'
+			'Service count reported by the eCitizen platform.'
 		),
 	)
 	observed_service_count: int | None = Field(
 		...,
-		description=(
-			'Service count observed in the dataset.'
-		),
+		description=('Service count observed in the dataset.'),
 	)
 	observed_department_count: int | None = Field(
 		...,
-		description=(
-			'Department count observed in the dataset.'
-		),
+		description=('Department count observed in the dataset.'),
 	)
 
 	ministry_url: str = Field(

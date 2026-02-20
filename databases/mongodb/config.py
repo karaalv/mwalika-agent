@@ -30,8 +30,7 @@ async def start_mongodb_client() -> None:
 		if not mongo_uri:
 			raise MongoDBException(
 				message=(
-					'MONGODB_URI environment '
-					'variable is not set.'
+					'MONGODB_URI environment variable is not set.'
 				),
 				code='mongodb_uri_none',
 				context=ErrorContext(
@@ -55,9 +54,7 @@ async def start_mongodb_client() -> None:
 			)
 		except Exception as e:
 			raise MongoDBException(
-				message=(
-					'Failed to initialize MongoDB client.'
-				),
+				message=('Failed to initialize MongoDB client.'),
 				code='mongodb_client_init_failed',
 				context=ErrorContext(
 					operation='start_mongodb_client',

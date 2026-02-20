@@ -29,9 +29,7 @@ from shared.logging import (
 	cprint,
 )
 
-load_dotenv(
-	override=True, dotenv_path=os.path.abspath('.env.test')
-)
+load_dotenv(override=True, dotenv_path=os.path.abspath('.env.test'))
 
 # --- Async client fixtures ---
 
@@ -75,8 +73,7 @@ async def _init_openai_test_client() -> None:
 	openai_api_key = os.getenv('OPENAI_API_KEY')
 	if not openai_api_key:
 		raise RuntimeError(
-			'OPENAI_API_KEY environment '
-			'variable is not set.'
+			'OPENAI_API_KEY environment variable is not set.'
 		)
 	client = AsyncOpenAI(api_key=openai_api_key)
 	set_openai_client(client)

@@ -71,9 +71,7 @@ async def create_points(
 			context=ErrorContext(
 				operation='create_points',
 				component='qdrant.points',
-				metadata={
-					'collection_name': collection_name
-				},
+				metadata={'collection_name': collection_name},
 			),
 			cause=e,
 		) from e

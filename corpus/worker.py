@@ -148,33 +148,23 @@ class CorpusWorker:
 			self.data_path / 'departments.json'
 		)
 		for entry in data:
-			department = DepartmentEntry.model_validate(
-				entry
-			)
-			self.departments[department.department_id] = (
-				department
-			)
+			department = DepartmentEntry.model_validate(entry)
+			self.departments[department.department_id] = department
 
 	def _load_agencies(self) -> None:
-		data: list[dict] = read_json(
-			self.data_path / 'agencies.json'
-		)
+		data: list[dict] = read_json(self.data_path / 'agencies.json')
 		for entry in data:
 			agency = AgencyEntry.model_validate(entry)
 			self.agencies[agency.agency_id] = agency
 
 	def _load_services(self) -> None:
-		data: list[dict] = read_json(
-			self.data_path / 'services.json'
-		)
+		data: list[dict] = read_json(self.data_path / 'services.json')
 		for entry in data:
 			service = ServiceEntry.model_validate(entry)
 			self.services[service.service_id] = service
 
 	def _load_faqs(self) -> None:
-		data: list[dict] = read_json(
-			self.data_path / 'faqs.json'
-		)
+		data: list[dict] = read_json(self.data_path / 'faqs.json')
 		for entry in data:
 			faq = FAQEntry.model_validate(entry)
 			self.faqs[faq.faq_id] = faq
@@ -210,9 +200,7 @@ class CorpusWorker:
 
 	# --- Qdrant helpers ---
 
-	async def _summarise_description(
-		self, text: str
-	) -> str:
+	async def _summarise_description(self, text: str) -> str:
 		return await normal_response(
 			system_prompt=_description_summary_prompt,
 			user_input=text,
@@ -224,8 +212,7 @@ class CorpusWorker:
 		that exceed the token limit
 		"""
 		cprint(
-			'Precomputing summaries for '
-			'long descriptions...',
+			'Precomputing summaries for long descriptions...',
 			style=LogStyle.INFO,
 		)
 
@@ -253,9 +240,7 @@ class CorpusWorker:
 					)
 				)
 			else:
-				a.agency_description_summary = (
-					a.agency_description
-				)
+				a.agency_description_summary = a.agency_description
 
 		sem = asyncio.Semaphore(8)
 
@@ -276,14 +261,10 @@ class CorpusWorker:
 			tasks = []
 
 			for m in self.ministries.values():
-				tasks.append(
-					asyncio.create_task(guarded(do_min(m)))
-				)
+				tasks.append(asyncio.create_task(guarded(do_min(m))))
 
 			for a in self.agencies.values():
-				tasks.append(
-					asyncio.create_task(guarded(do_ag(a)))
-				)
+				tasks.append(asyncio.create_task(guarded(do_ag(a))))
 
 			await asyncio.gather(*tasks)
 
@@ -296,9 +277,7 @@ class CorpusWorker:
 		and forming the CorpusItem to be stored in
 		Qdrant.
 		"""
-		embedding = await create_embedding(
-			input=job.embedding_input
-		)
+		embedding = await create_embedding(input=job.embedding_input)
 		return CorpusItem(
 			id=job.qdrant_id,
 			vector=embedding,
@@ -365,15 +344,12 @@ class CorpusWorker:
 				)
 				for agency in agencies:
 					ag_desc = agency.agency_description
-					ag_sum = (
-						agency.agency_description_summary
-					)
+					ag_sum = agency.agency_description_summary
 					if not ag_sum:
 						ag_sum = ag_desc
 
 					ag_ctx = (
-						dept_ctx
-						+ f'\nAgency: {agency.agency_name}\n'  # noqa: E501
+						dept_ctx + f'\nAgency: {agency.agency_name}\n'  # noqa: E501
 						f'Agency Description: {ag_sum}\n'
 					)
 
@@ -399,12 +375,8 @@ class CorpusWorker:
 							+ f'\nService: {service.service_name}\n'  # noqa: E501
 						)
 
-						service_qdrant_id = (
-							generate_uuid_str()
-						)
-						service.qdrant_id = (
-							service_qdrant_id
-						)
+						service_qdrant_id = generate_uuid_str()
+						service.qdrant_id = service_qdrant_id
 
 						jobs.append(
 							PointJob(
@@ -517,9 +489,7 @@ class CorpusWorker:
 			unit='document',
 		) as pbar:
 			for batch in chunked(departments):
-				await department_collection.insert_many(
-					batch
-				)
+				await department_collection.insert_many(batch)
 				pbar.update(len(batch))
 
 	async def _push_agencies_to_mongodb(self) -> None:
@@ -531,8 +501,7 @@ class CorpusWorker:
 			MongoDBCollection.AGENCIES
 		)
 		agencies = [
-			agency.model_dump()
-			for agency in self.agencies.values()
+			agency.model_dump() for agency in self.agencies.values()
 		]
 		with tqdm(
 			total=len(self.agencies),
@@ -552,8 +521,7 @@ class CorpusWorker:
 			MongoDBCollection.SERVICES
 		)
 		services = [
-			service.model_dump()
-			for service in self.services.values()
+			service.model_dump() for service in self.services.values()
 		]
 		with tqdm(
 			total=len(self.services),

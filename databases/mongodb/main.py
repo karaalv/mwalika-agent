@@ -16,6 +16,11 @@ from exceptions.databases import MongoDBException
 # --- Configuration ---
 
 
+class MongoDBDatabase(str, Enum):
+	MWALIKA_CORPUS = 'mwalika_corpus'
+	CHATS = 'chats'
+
+
 class MongoDBCollection(str, Enum):
 	# Collections for Mwalika Corpus database
 	MINISTRIES = 'ministries'
@@ -31,16 +36,16 @@ class MongoDBCollection(str, Enum):
 
 # Mapping between collection and
 # database names for MongoDB operations
-_collection_map: dict[MongoDBCollection, str] = {
+_collection_map: dict[MongoDBCollection, MongoDBDatabase] = {
 	# Mwalika Corpus database
-	MongoDBCollection.MINISTRIES: 'mwalika_corpus',
-	MongoDBCollection.DEPARTMENTS: 'mwalika_corpus',
-	MongoDBCollection.AGENCIES: 'mwalika_corpus',
-	MongoDBCollection.SERVICES: 'mwalika_corpus',
-	MongoDBCollection.FAQS: 'mwalika_corpus',
+	MongoDBCollection.MINISTRIES: MongoDBDatabase.MWALIKA_CORPUS,
+	MongoDBCollection.DEPARTMENTS: MongoDBDatabase.MWALIKA_CORPUS,
+	MongoDBCollection.AGENCIES: MongoDBDatabase.MWALIKA_CORPUS,
+	MongoDBCollection.SERVICES: MongoDBDatabase.MWALIKA_CORPUS,
+	MongoDBCollection.FAQS: MongoDBDatabase.MWALIKA_CORPUS,
 	# Chats database
-	MongoDBCollection.SESSIONS: 'chats',
-	MongoDBCollection.MEMORIES: 'chats',
+	MongoDBCollection.SESSIONS: MongoDBDatabase.CHATS,
+	MongoDBCollection.MEMORIES: MongoDBDatabase.CHATS,
 }
 
 # --- Collection Access ---
@@ -62,11 +67,9 @@ async def get_collection(
 			context=ErrorContext(
 				operation='get_collection',
 				component='mongodb.main',
-				metadata={
-					'collection_name': collection.value
-				},
+				metadata={'collection_name': collection.value},
 			),
 		)
-	db_name = _collection_map[collection]
+	db_name = _collection_map[collection].value
 	client = get_mongodb_client()
 	return client[db_name][collection.value]

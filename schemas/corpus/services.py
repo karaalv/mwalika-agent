@@ -49,27 +49,21 @@ class ServiceEntry(BaseModel):
 	service_name: str = Field(
 		...,
 		description=(
-			'Service name as listed on the '
-			'eCitizen platform.'
+			'Service name as listed on the eCitizen platform.'
 		),
 	)
 	service_url: str = Field(
 		...,
 		description=(
-			'URL of the service page on the '
-			'eCitizen platform.'
+			'URL of the service page on the eCitizen platform.'
 		),
 	)
 
 	service_description: str | None = Field(
 		default=None,
-		description=(
-			'Reserved for future use, currently null.'
-		),
+		description=('Reserved for future use, currently null.'),
 	)
 	requirements: str | None = Field(
 		default=None,
-		description=(
-			'Reserved for future use, currently null.'
-		),
+		description=('Reserved for future use, currently null.'),
 	)
