@@ -6,7 +6,11 @@ Agent system.
 
 from typing import Final
 
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.models import (
+	Distance,
+	PayloadSchemaType,
+	VectorParams,
+)
 
 from databases.qdrant.config import get_qdrant_client
 from exceptions.core import ErrorContext
@@ -31,12 +35,20 @@ async def ensure_collection_exists(
 	exists = await collection_exists(collection_name)
 	if not exists:
 		try:
+			# Create collection with specified vector
+			# configuration
 			result = await client.create_collection(
 				collection_name=collection_name,
 				vectors_config=VectorParams(
 					size=VECTOR_SIZE,
 					distance=Distance.COSINE,
 				),
+			)
+			# Create index on the 'type' field for efficient filtering
+			await client.create_payload_index(
+				collection_name=collection_name,
+				field_name='type',
+				field_schema=PayloadSchemaType.KEYWORD,
 			)
 			if not result:
 				raise QdrantException(

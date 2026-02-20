@@ -6,6 +6,7 @@ function.
 """
 
 import json
+from typing import Any
 
 import sentry_sdk
 
@@ -46,6 +47,9 @@ class StreamManager:
 		self.parsing_block: bool = False
 		self.content_items: list[MemoryContent] = []
 		self.current_message: str = ''
+		# Tools
+		self.tool_name: str | None = None
+		self.tool_args: dict[str, Any] | None = None
 
 	# --- State management methods ---
 
@@ -55,6 +59,8 @@ class StreamManager:
 	def clear_state(self):
 		self.state = None
 		self.buffer = ''
+		self.tool_name = None
+		self.tool_args = None
 
 	def get_state(self) -> StreamState | None:
 		return self.state
@@ -74,12 +80,18 @@ class StreamManager:
 			content=self.content_items,
 		)
 
+	def set_tool_call(
+		self, tool_name: str, tool_args: dict[str, Any]
+	):
+		self.tool_name = tool_name
+		self.tool_args = tool_args
+
 	# --- Buffer management methods ---
 
 	def _add_block_content(self, item: NdJsonItem):
-		if item.type == 'image':
+		if item.type == NdJsonTypes.IMAGE:
 			content_type = MemoryContentTypes.IMAGE
-		elif item.type == 'link':
+		elif item.type == NdJsonTypes.LINK:
 			content_type = MemoryContentTypes.LINK
 		else:
 			content_type = MemoryContentTypes.TEXT
@@ -143,7 +155,7 @@ class StreamManager:
 
 		# If block prefix detected move to
 		# parsing
-		if (self.block_prefix == delta.strip()) or self.parsing_block:
+		if (self.block_prefix in delta.strip()) or self.parsing_block:
 			# Set flag to pause further buffering until
 			# block is processed
 			self.parsing_block = True

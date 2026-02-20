@@ -23,18 +23,18 @@ from utils.decorators.exceptions import guard_async
 # --- Search helpers ---
 
 
-def _type_filter(item_type: CorpusItemType) -> Filter | None:
+def _type_filter(search_type: CorpusItemType | None) -> Filter | None:
 	"""
 	Creates a Qdrant filter for the
 	specified CorpusItemType.
 	"""
-	if item_type == CorpusItemType.ANY:
+	if search_type is None:
 		return None
 	return Filter(
 		must=[
 			FieldCondition(
 				key='type',
-				match=MatchValue(value=item_type.value),
+				match=MatchValue(value=search_type.value),
 			)
 		]
 	)
@@ -66,7 +66,7 @@ def _package_result_item(
 )
 async def search_corpus(
 	query_vector: list[float],
-	item_type: CorpusItemType,
+	search_type: CorpusItemType | None,
 	limit: int = 3,
 	collection: str = COLLECTION_NAME,
 ) -> list[CorpusSearchResult]:
@@ -78,12 +78,29 @@ async def search_corpus(
 	try:
 		search_result = await client.query_points(
 			collection_name=collection,
-			query_vector=query_vector,
-			filter=_type_filter(item_type),
+			query=query_vector,
+			query_filter=_type_filter(search_type),
 			limit=limit,
 			with_payload=True,
 			with_vectors=False,
 		)
+		if not search_result.points:
+			raise QdrantException(
+				message=(
+					'No search results found for the given query.'
+				),
+				code='no_search_results',
+				context=ErrorContext(
+					operation='search_corpus',
+					component='qdrant.search',
+					metadata={
+						'search_type': search_type.value
+						if search_type
+						else None,
+						'limit': limit,
+					},
+				),
+			)
 		return [
 			_package_result_item(result)
 			for result in search_result.points
@@ -96,7 +113,9 @@ async def search_corpus(
 				operation='search_corpus',
 				component='qdrant.search',
 				metadata={
-					'item_type': item_type.value,
+					'search_type': search_type.value
+					if search_type
+					else None,
 					'limit': limit,
 				},
 			),

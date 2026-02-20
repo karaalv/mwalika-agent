@@ -25,6 +25,7 @@ from openai_client.config import (
 	start_openai_client,
 )
 from shared.logging import LogStyle, cprint
+from tests.utils.mongodb import clear_test_databases
 
 load_dotenv(override=True, dotenv_path=os.path.abspath('.env.test'))
 
@@ -39,6 +40,7 @@ async def _setup() -> None:
 	await start_mongodb_client()
 	start_qdrant_client()
 	start_openai_client()
+	await clear_test_databases()
 	cprint(
 		'Test environment setup complete.',
 		style=LogStyle.SUCCESS,
@@ -50,6 +52,7 @@ async def _teardown() -> None:
 		'Tearing down test environment...',
 		style=LogStyle.INFO,
 	)
+	await clear_test_databases()
 	await close_mongodb_client()
 	await close_qdrant_client()
 	await close_openai_client()

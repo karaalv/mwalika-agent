@@ -60,7 +60,9 @@ TOOL_DEFINITIONS: list[ToolParam] = [
 						"agency, service. Use 'any' to search "
 						'across all types if unsure.'
 					),
-					'enum': ([t.value for t in CorpusItemType]),
+					'enum': (
+						[t.value for t in CorpusItemType] + ['any']
+					),
 				},
 			},
 			'required': ['query', 'type_filter'],

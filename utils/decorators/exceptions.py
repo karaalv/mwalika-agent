@@ -144,7 +144,7 @@ def guard_async(
 					fn.__name__,
 				)
 				# Add tags and breadcrumbs for sentry
-				with sentry_sdk.push_scope():
+				with sentry_sdk.new_scope():
 					set_tags(tags, metadata=meta)
 					add_breadcrumb(
 						category=f'{component}:{operation}',
@@ -163,7 +163,7 @@ def guard_async(
 					fn.__name__,
 				)
 				# Add tags and breadcrumbs for sentry
-				with sentry_sdk.push_scope():
+				with sentry_sdk.new_scope():
 					set_tags(tags, metadata=meta)
 					add_breadcrumb(
 						category=f'{component}:{operation}',

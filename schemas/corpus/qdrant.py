@@ -18,7 +18,6 @@ class CorpusItemType(str, Enum):
 	DEPARTMENT = 'department'
 	AGENCY = 'agency'
 	SERVICE = 'service'
-	ANY = 'any'
 
 
 class CorpusPayload(BaseModel):
