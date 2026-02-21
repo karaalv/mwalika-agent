@@ -31,12 +31,16 @@ async def dispatch_tool_call(
 	"""
 	try:
 		if tool_name == 'faq_list':
+			# TODO: Send tool message in loading state
+			# before processing
 			result = await form_faq_tool_response()
 			return return_successful_tool_response(
 				tool_name=tool_name,
 				tool_response=result,
 			)
 		elif tool_name == 'corpus_lookup':
+			# TODO: Send tool message in loading state
+			# before processing
 			query = tool_args.get('query', user_input)
 			type_filter = tool_args.get('type_filter', 'any')
 			result = await corpus_lookup(

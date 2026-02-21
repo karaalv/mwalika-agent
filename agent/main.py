@@ -27,6 +27,7 @@ from exceptions.core import (
 	ErrorContext,
 )
 from openai_client.main import agent_response_stream
+from shared.ids import generate_uuid_str
 from shared.logging import LogStyle, cprint
 from utils.decorators.exceptions import guard
 
@@ -132,7 +133,10 @@ async def agent_chat(
 
 	# Create response stream for agent, maintaining
 	# stream state for processing events and tool calls
-	state = StreamManager(user_id=user_id, session_id=session_id)
+	memory_id = generate_uuid_str()
+	state = StreamManager(
+		user_id=user_id, session_id=session_id, memory_id=memory_id
+	)
 	response_stream = await agent_response_stream(
 		system_prompt=agent_system_prompt,
 		user_input=user_input,

@@ -34,10 +34,11 @@ class StreamManager:
 	including buffering and processing of events.
 	"""
 
-	def __init__(self, user_id: str, session_id: str):
+	def __init__(self, user_id: str, session_id: str, memory_id: str):
 		# Session
 		self.user_id = user_id
 		self.session_id = session_id
+		self.memory_id = memory_id
 		# Config
 		self.max_buffer_chars = 500
 		self.block_prefix = '{'
@@ -47,6 +48,7 @@ class StreamManager:
 		self.parsing_block: bool = False
 		self.content_items: list[MemoryContent] = []
 		self.current_message: str = ''
+		self.sequence_counter: int = 0
 		# Tools
 		self.tool_name: str | None = None
 		self.tool_args: dict[str, Any] | None = None
@@ -76,6 +78,7 @@ class StreamManager:
 		return AgentMemory(
 			session_id=self.session_id,
 			user_id=self.user_id,
+			memory_id=self.memory_id,
 			sender='agent',
 			content=self.content_items,
 		)
@@ -85,6 +88,11 @@ class StreamManager:
 	):
 		self.tool_name = tool_name
 		self.tool_args = tool_args
+
+	def _set_sequence_number(self) -> int:
+		current = self.sequence_counter
+		self.sequence_counter += 1
+		return current
 
 	# --- Buffer management methods ---
 
@@ -150,6 +158,8 @@ class StreamManager:
 				block=NdJsonItem(
 					type=NdJsonTypes.TEXT,
 					payload=content,
+					memory_id=self.memory_id,
+					sequence_number=self._set_sequence_number(),
 				),
 			)
 
@@ -204,6 +214,8 @@ class StreamManager:
 			block=NdJsonItem(
 				type=NdJsonTypes.TEXT,
 				payload=delta,
+				memory_id=self.memory_id,
+				sequence_number=self._set_sequence_number(),
 			),
 		)
 
@@ -222,6 +234,8 @@ class StreamManager:
 				block=NdJsonItem(
 					type=NdJsonTypes.TEXT,
 					payload=remainder,
+					memory_id=self.memory_id,
+					sequence_number=self._set_sequence_number(),
 				),
 			)
 		return None

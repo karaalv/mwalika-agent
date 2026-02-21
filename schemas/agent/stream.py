@@ -29,6 +29,19 @@ class NdJsonItem(BaseModel):
 		...,
 		description='Payload of the NDJSON item',
 	)
+	memory_id: str = Field(
+		...,
+		description=(
+			'Unique identifier for the memory this item belongs to'
+		),
+	)
+	sequence_number: int = Field(
+		...,
+		description=(
+			'Sequence number of this item in the stream, used for '
+			'ordering and buffering logic'
+		),
+	)
 
 
 # --- Stream parsing response schema ---
