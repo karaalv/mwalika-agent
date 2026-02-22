@@ -17,7 +17,7 @@ from schemas.api.responses import (
 def create_websocket_response(
 	message_type: WebSocketMessageType,
 	payload: WebSocketMessagePayload,
-	response_id: str,
+	request_id: str,
 	success: bool = True,
 	message: str = '',
 ) -> WebSocketResponse:
@@ -27,7 +27,7 @@ def create_websocket_response(
 	"""
 	return WebSocketResponse(
 		meta=MetaData(
-			response_id=response_id, success=success, message=message
+			request_id=request_id, success=success, message=message
 		),
 		message=WebSocketMessage(type=message_type, payload=payload),
 	)

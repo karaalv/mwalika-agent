@@ -1,6 +1,6 @@
 """
-This module contains lifecycle utilities for api
-related components (singletons, background tasks, etc).
+This module contains lifecycle utilities for the websocket
+registry and its components (singletons, background tasks, etc).
 """
 
 import sentry_sdk
@@ -47,7 +47,7 @@ def _raise_registry_not_initialized(op: str) -> None:
 # --- Lifecycle management ---
 
 
-def start_api_system() -> None:
+def start_websocket_registry() -> None:
 	"""Initializes the global WebSocket registry."""
 	global _websocket_registry
 	if _websocket_registry is None:
@@ -59,7 +59,7 @@ def start_api_system() -> None:
 		)
 
 
-async def stop_api_system() -> None:
+async def stop_websocket_registry() -> None:
 	"""Closes the global WebSocket registry."""
 	global _websocket_registry
 	if _websocket_registry is not None:

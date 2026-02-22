@@ -19,6 +19,7 @@ from exceptions.databases import MongoDBException
 class MongoDBDatabase(str, Enum):
 	MWALIKA_CORPUS = 'mwalika_corpus'
 	CHATS = 'chats'
+	MWALIKA_IDENTITY = 'mwalika_identity'
 
 
 class MongoDBCollection(str, Enum):
@@ -33,6 +34,10 @@ class MongoDBCollection(str, Enum):
 	SESSIONS = 'sessions'
 	MEMORIES = 'memories'
 
+	# Collections for Mwalika Identity database
+	USERS = 'users'
+	USER_USAGE_STATS = 'user_usage_stats'
+
 
 # Mapping between collection and
 # database names for MongoDB operations
@@ -46,6 +51,11 @@ _collection_map: dict[MongoDBCollection, MongoDBDatabase] = {
 	# Chats database
 	MongoDBCollection.SESSIONS: MongoDBDatabase.CHATS,
 	MongoDBCollection.MEMORIES: MongoDBDatabase.CHATS,
+	# Mwalika Identity database
+	MongoDBCollection.USERS: MongoDBDatabase.MWALIKA_IDENTITY,
+	MongoDBCollection.USER_USAGE_STATS: (
+		MongoDBDatabase.MWALIKA_IDENTITY
+	),
 }
 
 # --- Collection Access ---

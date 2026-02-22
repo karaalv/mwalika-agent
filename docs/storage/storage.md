@@ -83,15 +83,19 @@ It stores:
 ```txt
 mongodb
 ├── Database: mwalika_corpus
-│ ├── Collection: ministries
-│ ├── Collection: departments
-│ ├── Collection: agencies
-│ ├── Collection: services
-│ └── Collection: faqs
-└── Database: chats
-│ ├── Collection: sessions
-│ └── Collection: memories
-...
+│   ├── Collection: ministries
+│   ├── Collection: departments
+│   ├── Collection: agencies
+│   ├── Collection: services
+│   └── Collection: faqs
+│
+├── Database: chats
+│   ├── Collection: sessions
+│   └── Collection: memories
+│
+└── Database: mwalika_identity
+    ├── Collection: users
+    └── Collection: user_usage_stats
 ```
 
 Indexes may be added as performance requirements evolve.
@@ -157,7 +161,7 @@ interface MemoryContent {
 }
 ```
 
-### Content Model
+#### Content Model
 
 Messages are stored as an array of content blocks.
 
@@ -166,6 +170,38 @@ This aligns with the agent's structured streaming format (NDJSON-style blocks), 
 - Mixed content rendering.
 - Image support.
 - Future extensibility (buttons, structured outputs, etc.).
+
+### 3.3 Database: mwalika_identity
+
+The `mwalika_identity` database stores user-related data, including anonymous users and their usage statistics.
+
+#### Collection: users
+
+Stores information about anonymous users.
+
+```typescript
+interface AnonymousUser {
+    user_id: string;
+    is_blocked: boolean;
+    language_preference: 'english' | 'swahili';
+    created_at: string;      // ISO 8601 (UTC)
+    last_active_at: string;  // ISO 8601 (UTC)
+}
+```
+
+#### Collection: user_usage_stats
+
+Stores usage statistics for each user.
+
+```typescript
+interface UserUsageStats {
+    user_id: string;
+    requests_today: number;
+    agent_input_tokens: number;
+    agent_input_tokens_today: number;
+    last_request_timestamp: string; // ISO 8601 (UTC)
+}
+```
 
 ## 4. Separation of Responsibilities
 

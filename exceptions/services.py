@@ -15,3 +15,12 @@ class OpenAIException(ApplicationException):
 	"""
 
 	pass
+
+
+class SentryException(ApplicationException):
+	"""
+	Exception raised for errors related to
+	Sentry integration and configuration.
+	"""
+
+	pass

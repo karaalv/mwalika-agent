@@ -15,7 +15,7 @@ from databases.qdrant.config import (
 	start_qdrant_client,
 )
 
-load_dotenv(override=True, dotenv_path=os.path.abspath('.env'))
+load_dotenv(override=True, dotenv_path=os.path.abspath('.env.dev'))
 
 
 async def main() -> None:

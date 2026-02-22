@@ -101,6 +101,8 @@ async def agent_chat(
 	if not session_id:
 		new_session = await create_agent_session(user_id, user_input)
 		session_id = new_session.session_id
+		# TODO: Stream session creation event to ws
+		# for client to update session list, etc.
 
 	# Push user input to memory
 	if recursion_depth == 0:
@@ -243,5 +245,7 @@ async def agent_chat(
 			style=LogStyle.INFO,
 		)
 	await insert_agent_memory(memory)
+
+	# TODO: Update session last active timestamp, etc.
 
 	state.clear_state()

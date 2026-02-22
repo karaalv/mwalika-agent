@@ -9,7 +9,7 @@ from typing import Any
 
 import sentry_sdk
 
-from api.lifecycle import (
+from api.lifecycle.websocket_registry import (
 	send_websocket_message_connection,
 	send_websocket_message_user,
 )

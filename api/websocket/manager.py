@@ -170,7 +170,7 @@ class WebSocketManager:
 				heartbeat_message = create_websocket_response(
 					message_type=WebSocketMessageType.HEARTBEAT,
 					payload='ping',
-					response_id=generate_uuid_str(),
+					request_id=generate_uuid_str(),
 					success=True,
 					message='Heartbeat ping',
 				)
@@ -246,6 +246,8 @@ class WebSocketManager:
 		try:
 			while not self._is_closed.is_set():
 				response = await self._message_queue.get()
+				# Set request_id for logging context
+				self.request_id = response.meta.request_id
 				try:
 					await self.websocket.send_json(
 						response.model_dump(mode='json')

@@ -17,7 +17,7 @@ from shared.time import get_timestamp
 
 
 class MetaData(BaseModel):
-	response_id: str = Field(
+	request_id: str = Field(
 		...,
 		description=(
 			'A unique identifier for this API response, useful for '
@@ -68,6 +68,8 @@ class WebSocketMessageType(Enum):
 	HEARTBEAT = 'heartbeat'
 	AGENT_RESPONSE = 'agent_response'
 	TOOL_MESSAGE = 'tool_message'
+	SET_USER_ID = 'set_user_id'
+	SET_SESSION_ID = 'set_session_id'
 
 
 class WebSocketMessage(BaseModel):

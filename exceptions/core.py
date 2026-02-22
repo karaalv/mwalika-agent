@@ -5,12 +5,12 @@ various components to package and handle errors
 in a consistent manner.
 """
 
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic import BaseModel
 
-@dataclass
-class ErrorContext:
+
+class ErrorContext(BaseModel):
 	"""
 	Contextual information about an
 	error used for more informative
