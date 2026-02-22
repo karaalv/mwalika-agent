@@ -5,17 +5,23 @@ related components (singletons, background tasks, etc).
 
 from typing import Any
 
+from api.utils.responses import create_websocket_response
 from events.bus import InMemoryBus
 from events.forwarder import EventForwarder
 from exceptions.core import ErrorContext
 from exceptions.events import (
 	EventBusException,
 )
+from schemas.api.responses import (
+	WebSocketMessagePayload,
+	WebSocketMessageType,
+)
 from schemas.events.core import (
 	EventPayloadUnion,
 	EventType,
 	InMemoryEvent,
 )
+from shared.ids import generate_uuid_str
 from shared.logging import LogStyle, cprint
 
 # --- Global instances ---
@@ -114,6 +120,33 @@ async def publish_event(
 		event_options=event_options or {},
 	)
 	await _event_bus.publish(event)
+
+
+async def publish_websocket_message(
+	user_id: str,
+	message_type: WebSocketMessageType,
+	payload: WebSocketMessagePayload,
+	message: str,
+	success: bool = True,
+	event_options: dict[str, Any] | None = None,
+) -> None:
+	"""
+	Utility function to publish a WebSocket
+	message event.
+	"""
+	ws_response = create_websocket_response(
+		request_id=generate_uuid_str(),
+		success=success,
+		message=message,
+		message_type=message_type,
+		payload=payload,
+	)
+	await publish_event(
+		user_id=user_id,
+		event_type=EventType.WEBSOCKET_MESSAGE,
+		payload=ws_response,
+		event_options=event_options,
+	)
 
 
 async def get_next_event() -> InMemoryEvent | None:

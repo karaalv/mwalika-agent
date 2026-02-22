@@ -154,7 +154,10 @@ async def agent_chat_websocket(websocket: WebSocket):
 				# create user if not exists, and send user ID
 				# to client
 				if not user_exists:
-					await _create_user_send_event(user_id=user_id)
+					await _create_user_send_event(
+						user_id=user_id,
+						connection_id=connection_id,
+					)
 					user_exists = True
 
 				# Perform agent chat interaction,
@@ -163,6 +166,7 @@ async def agent_chat_websocket(websocket: WebSocket):
 					user_id=user_id,
 					session_id=session_id,
 					user_input=user_input,
+					connection_id=connection_id,
 				)
 
 				# Increment usage stats for user, etc.
@@ -188,7 +192,9 @@ async def agent_chat_websocket(websocket: WebSocket):
 # --- Agent utility functions ---
 
 
-async def _create_user_send_event(user_id: str):
+async def _create_user_send_event(
+	user_id: str, connection_id: str
+) -> None:
 	"""
 	Utility function to create an anonymous user and
 	send a WebSocket message to the client with the
@@ -214,4 +220,5 @@ async def _create_user_send_event(user_id: str):
 		user_id=user_id,
 		event_type=EventType.WEBSOCKET_MESSAGE,
 		payload=ws_response,
+		event_options={'connection_id': connection_id},
 	)

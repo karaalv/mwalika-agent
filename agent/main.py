@@ -15,18 +15,24 @@ from agent.memory.insertion import (
 from agent.memory.retrieval import retrieve_agent_memory_prompt
 from agent.prompts.agent import AGENT_SYSTEM_PROMPT
 from agent.sessions.creation import create_agent_session
+from agent.sessions.update import update_session_last_active
 from agent.streaming.stream_manager import (
+	NdJsonItem,
 	StreamManager,
 	StreamParsingCode,
 	StreamState,
 )
 from agent.tools.dispatch import dispatch_tool_call
 from agent.tools.tool_definitions import TOOL_DEFINITIONS
+from events.lifecycle import publish_websocket_message
 from exceptions.core import (
 	ApplicationException,
 	ErrorContext,
 )
 from openai_client.main import agent_response_stream
+from schemas.api.responses import (
+	WebSocketMessageType,
+)
 from shared.ids import generate_uuid_str
 from shared.logging import LogStyle, cprint
 from utils.decorators.exceptions import guard
@@ -58,18 +64,70 @@ def _raise_recursion_limit_exceeded() -> None:
 
 
 async def _resolve_tool_call(
+	user_id: str,
 	tool_name: str,
 	tool_args: dict[str, Any],
 	user_input: str,
+	connection_id: str | None = None,
 ) -> str:
 	"""
 	Resolves the tool call by dispatching to the appropriate
 	tool function based on the tool name and arguments.
 	"""
 	return await dispatch_tool_call(
+		user_id=user_id,
 		tool_name=tool_name,
 		tool_args=tool_args,
 		user_input=user_input,
+		connection_id=connection_id,
+	)
+
+
+async def _publish_session_update(
+	user_id: str, session_id: str, connection_id: str | None = None
+) -> None:
+	"""
+	Utility function to publish a WebSocket message event
+	to notify the client of a session update, such as
+	session creation or deletion.
+	"""
+	payload = {'session_id': session_id}
+	await publish_websocket_message(
+		user_id=user_id,
+		message_type=WebSocketMessageType.SET_SESSION_ID,
+		payload=payload,
+		message=f'Session {session_id} update',
+		event_options=(
+			{'connection_id': connection_id}
+			if connection_id
+			else None
+		),
+	)
+
+
+async def _publish_agent_response(
+	user_id: str,
+	block: NdJsonItem,
+	connection_id: str | None = None,
+) -> None:
+	"""
+	Utility function to publish a WebSocket message event
+	to send an agent response back to the client.
+	"""
+	await publish_websocket_message(
+		user_id=user_id,
+		message_type=WebSocketMessageType.AGENT_RESPONSE,
+		payload=block,
+		message=(
+			f'Agent response update'
+			f'id {block.memory_id}'
+			f'seq {block.sequence_number}'
+		),
+		event_options=(
+			{'connection_id': connection_id}
+			if connection_id
+			else None
+		),
 	)
 
 
@@ -85,6 +143,7 @@ async def agent_chat(
 	user_id: str,
 	user_input: str,
 	session_id: str | None = None,
+	connection_id: str | None = None,
 	recursion_instructions: str | None = None,
 	recursion_depth: int = 0,
 	verbosity_level: int = 0,
@@ -101,8 +160,13 @@ async def agent_chat(
 	if not session_id:
 		new_session = await create_agent_session(user_id, user_input)
 		session_id = new_session.session_id
-		# TODO: Stream session creation event to ws
+		# Stream session creation event to ws
 		# for client to update session list, etc.
+		await _publish_session_update(
+			user_id=user_id,
+			session_id=session_id,
+			connection_id=connection_id,
+		)
 
 	# Push user input to memory
 	if recursion_depth == 0:
@@ -160,11 +224,9 @@ async def agent_chat(
 			if event.item.type == 'function_call':
 				# Handle tool call event
 				state.set_state(StreamState.TOOL)
-				pass
 			elif event.item.type == 'message':
 				# Handle message event
 				state.set_state(StreamState.MESSAGE)
-				pass
 		elif event.type == 'response.output_text.delta':
 			if state.get_state() == StreamState.MESSAGE:
 				# Handle message text delta event
@@ -180,8 +242,14 @@ async def agent_chat(
 							f'NDJSON: {response.block}',
 							style=LogStyle.INFO,
 						)
-				# TODO: Send data to ws
-				pass
+				if not response.block:
+					continue
+				# Send message delta update to ws
+				await _publish_agent_response(
+					user_id=user_id,
+					block=response.block,
+					connection_id=connection_id,
+				)
 		elif event.type == 'response.output_text.done':
 			if state.get_state() == StreamState.MESSAGE:
 				# Handle message text done event
@@ -193,8 +261,13 @@ async def agent_chat(
 						f'Message Remainder: {remainder.block}',
 						style=LogStyle.DEFAULT,
 					)
-				# TODO: Send blocks to ws
-				pass
+				if remainder and remainder.block:
+					# Send final message update to ws
+					await _publish_agent_response(
+						user_id=user_id,
+						block=remainder.block,
+						connection_id=connection_id,
+					)
 		elif event.type == 'response.output_item.done':
 			if state.get_state() == StreamState.TOOL:
 				# Handle tool call done event
@@ -211,15 +284,16 @@ async def agent_chat(
 							f' with args {tool_args}',
 							style=LogStyle.INFO,
 						)
-				pass
 
 	# If tool was called, execute the tool in recursive
 	# agent_chat call and stream results back to user
 	if state.get_state() == StreamState.TOOL and state.tool_name:
 		tool_response = await _resolve_tool_call(
+			user_id=user_id,
 			tool_name=state.tool_name,
 			tool_args=state.tool_args or {},
 			user_input=user_input,
+			connection_id=connection_id,
 		)
 		if verbosity_level > 0:
 			cprint(
@@ -231,6 +305,7 @@ async def agent_chat(
 			user_id=user_id,
 			user_input=tool_response,
 			session_id=session_id,
+			connection_id=connection_id,
 			recursion_instructions=recursion_instructions,
 			recursion_depth=recursion_depth + 1,
 			verbosity_level=verbosity_level,
@@ -246,6 +321,7 @@ async def agent_chat(
 		)
 	await insert_agent_memory(memory)
 
-	# TODO: Update session last active timestamp, etc.
+	# Update session last active timestamp, etc.
+	await update_session_last_active(session_id=session_id)
 
 	state.clear_state()

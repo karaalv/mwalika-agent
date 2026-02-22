@@ -14,16 +14,101 @@ from agent.prompts.tools import (
 )
 from agent.tools.corpus_lookup import corpus_lookup
 from agent.tools.faq_list import form_faq_tool_response
+from events.lifecycle import publish_websocket_message
 from observability.sentry.helpers import (
 	BreadcrumbLevel,
 	add_breadcrumb,
 )
+from schemas.api.responses import WebSocketMessageType
+
+# --- Helper functions ---
+
+
+async def _send_tool_ws_message(
+	user_id: str,
+	tool_name: str,
+	titles: list[str],
+	connection_id: str | None = None,
+) -> None:
+	"""
+	Utility function to send a tool message event
+	to the frontend via WebSocket.
+	"""
+	message = (
+		f'Sending the following titles '
+		f'for tool {tool_name}:\n'
+		f'{", ".join(titles)}'
+	)
+	payload = {
+		'tool_name': tool_name,
+		'titles': titles,
+	}
+	await publish_websocket_message(
+		user_id=user_id,
+		message_type=WebSocketMessageType.TOOL_MESSAGE,
+		payload=payload,
+		message=message,
+		event_options=(
+			{'connection_id': connection_id}
+			if connection_id
+			else None
+		),
+	)
+
+
+async def _send_faq_ws_message(
+	user_id: str,
+	connection_id: str | None = None,
+) -> None:
+	"""
+	Utility function to send a FAQ tool message event
+	to the frontend via WebSocket.
+	"""
+	await _send_tool_ws_message(
+		user_id=user_id,
+		tool_name='faq_list',
+		titles=['Searching frequently asked questions'],
+		connection_id=connection_id,
+	)
+
+
+async def _send_corpus_lookup_ws_message(
+	user_id: str,
+	query: str,
+	type_filter: str,
+	connection_id: str | None = None,
+) -> None:
+	"""
+	Utility function to send a corpus lookup tool message event
+	to the frontend via WebSocket.
+	"""
+	filter_title = (
+		f'Filtering by type: {type_filter}'
+		if type_filter != 'any'
+		else 'No type filter applied'
+	)
+	query_title = f'Search question: {query}'
+	await _send_tool_ws_message(
+		user_id=user_id,
+		tool_name='corpus_lookup',
+		titles=[
+			'Performing corpus lookup',
+			filter_title,
+			query_title,
+		],
+		connection_id=connection_id,
+	)
+
+
+# --- Main dispatch function ---
 
 
 async def dispatch_tool_call(
+	user_id: str,
 	tool_name: str,
 	tool_args: dict[str, Any],
 	user_input: str,
+	connection_id: str | None = None,
 ) -> str:
 	"""
 	Dispatches the tool call to the appropriate tool function
@@ -31,18 +116,27 @@ async def dispatch_tool_call(
 	"""
 	try:
 		if tool_name == 'faq_list':
-			# TODO: Send tool message in loading state
-			# before processing
+			# Send initial WebSocket message to
+			# indicate FAQ search
+			await _send_faq_ws_message(
+				user_id=user_id, connection_id=connection_id
+			)
 			result = await form_faq_tool_response()
 			return return_successful_tool_response(
 				tool_name=tool_name,
 				tool_response=result,
 			)
 		elif tool_name == 'corpus_lookup':
-			# TODO: Send tool message in loading state
-			# before processing
+			# Send initial WebSocket message to indicate
+			# corpus lookup
 			query = tool_args.get('query', user_input)
 			type_filter = tool_args.get('type_filter', 'any')
+			await _send_corpus_lookup_ws_message(
+				user_id=user_id,
+				query=query,
+				type_filter=type_filter,
+				connection_id=connection_id,
+			)
 			result = await corpus_lookup(
 				query=query, type_filter=type_filter
 			)

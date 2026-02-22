@@ -31,10 +31,19 @@ TOOL_DEFINITIONS: list[ToolParam] = [
 		'description': (
 			'Search the structured corpus (ministries, '
 			'departments, agencies, services) using a '
-			'single-sentence query for embedding-based '
-			'retrieval. The assistant MUST construct a '
-			'concise query sentence that captures exactly '
-			'what the user is looking for.\n\n'
+			'single-sentence English query for embedding-'
+			'based retrieval.\n\n'
+			'IMPORTANT: The query MUST always be written '
+			'in clear, concise English. Even if the user '
+			'asks in Swahili, Sheng, or another language, '
+			'the assistant MUST translate the intent into '
+			'English before constructing the query.\n\n'
+			'The assistant MUST construct a single, '
+			'precise sentence that captures exactly what '
+			'the user is looking for.\n\n'
+			'Do NOT include explanations, formatting, '
+			'or multiple sentences. Do NOT include '
+			'Markdown.\n\n'
 			'If unsure which corpus type is most relevant, '
 			"use 'any' to search across all corpus types."
 		),
@@ -45,10 +54,11 @@ TOOL_DEFINITIONS: list[ToolParam] = [
 				'query': {
 					'type': 'string',
 					'description': (
-						"One sentence describing the user's "
-						'information need in a queryable form. '
+						'One single English sentence describing '
+						"the user's information need in a "
+						'clear, embedding-friendly form.\n\n'
 						"Example: 'services related to renewing "
-						"a driving licence'."
+						"a driving licence in Kenya'."
 					),
 					'minLength': 3,
 				},
