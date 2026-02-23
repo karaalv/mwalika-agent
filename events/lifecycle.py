@@ -46,7 +46,7 @@ def start_event_system() -> None:
 			prefix='events.lifecycle',
 		)
 	if _event_forwarder is None:
-		_event_forwarder = EventForwarder()
+		_event_forwarder = EventForwarder(bus=_event_bus)
 		_event_forwarder.start()
 		cprint(
 			'Event forwarder started.',
@@ -147,17 +147,3 @@ async def publish_websocket_message(
 		payload=ws_response,
 		event_options=event_options,
 	)
-
-
-async def get_next_event() -> InMemoryEvent | None:
-	"""Retrieves the next event from the global event bus."""
-	if _event_bus is None:
-		raise EventBusException(
-			message='Event bus is not initialized.',
-			code='event_bus_none',
-			context=ErrorContext(
-				operation='get_next_event',
-				component='events.lifecycle',
-			),
-		)
-	return await _event_bus.get_event()

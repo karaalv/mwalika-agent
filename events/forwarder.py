@@ -13,7 +13,7 @@ from api.lifecycle.websocket_registry import (
 	send_websocket_message_connection,
 	send_websocket_message_user,
 )
-from events.lifecycle import get_next_event
+from events.bus import InMemoryBus
 from exceptions.core import ErrorContext
 from exceptions.events import EventForwarderException
 from observability.sentry.helpers import (
@@ -31,7 +31,8 @@ class EventForwarder:
 	Agent system.
 	"""
 
-	def __init__(self):
+	def __init__(self, bus: InMemoryBus):
+		self._bus: InMemoryBus | None = bus
 		# Start background task for processing events
 		self._forwarder_task: asyncio.Task | None = None
 
@@ -97,6 +98,7 @@ class EventForwarder:
 					cause=e,
 				)
 			self._forwarder_task = None
+			self._bus = None
 
 	# --- WebSocket forwarding ---
 
@@ -140,7 +142,9 @@ class EventForwarder:
 	async def _process_events(self):
 		try:
 			while True:
-				event = await get_next_event()
+				if self._bus is None:
+					break  # Bus has been stopped, exit loop
+				event = await self._bus.get_event()
 				if not event:
 					# Sentinel value received, shutdown signal
 					break

@@ -20,6 +20,7 @@ from databases.qdrant.config import (
 	close_qdrant_client,
 	start_qdrant_client,
 )
+from events.lifecycle import start_event_system, stop_event_system
 from openai_client.config import (
 	close_openai_client,
 	start_openai_client,
@@ -40,6 +41,7 @@ async def _setup() -> None:
 	await start_mongodb_client()
 	start_qdrant_client()
 	start_openai_client()
+	start_event_system()
 	await clear_test_databases()
 	cprint(
 		'Test environment setup complete.',
@@ -56,6 +58,7 @@ async def _teardown() -> None:
 	await close_mongodb_client()
 	await close_qdrant_client()
 	await close_openai_client()
+	await stop_event_system()
 	cprint(
 		'Test environment teardown complete.',
 		style=LogStyle.SUCCESS,

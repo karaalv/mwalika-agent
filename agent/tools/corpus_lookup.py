@@ -51,7 +51,7 @@ def _resolve_search_type(item_type: str) -> CorpusItemType | None:
 async def _corpus_search(
 	query: str,
 	type_filter: str,
-	search_limit: int = 3,
+	search_limit: int = 2,
 	recursion_depth: int = 0,
 ) -> list[CorpusPayload] | None:
 	"""
@@ -78,7 +78,7 @@ async def _corpus_search(
 				return await _corpus_search(
 					query=query,
 					type_filter=type_filter,
-					search_limit=5,
+					search_limit=3,
 					recursion_depth=recursion_depth + 1,
 				)
 			else:

@@ -87,7 +87,7 @@ async def _send_corpus_lookup_ws_message(
 		if type_filter != 'any'
 		else 'No type filter applied'
 	)
-	query_title = f'Search question: {query}'
+	query_title = f'Searching under: {query}'
 	await _send_tool_ws_message(
 		user_id=user_id,
 		tool_name='corpus_lookup',

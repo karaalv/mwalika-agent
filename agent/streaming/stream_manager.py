@@ -26,6 +26,10 @@ from schemas.agent.stream import (
 	StreamParsingResponse,
 	StreamState,
 )
+from shared.logging import LogStyle, cprint
+
+# TODO: Redo this entire thing to better handle the
+# stream parsing and state
 
 
 class StreamManager:
@@ -163,6 +167,13 @@ class StreamManager:
 				),
 			)
 
+		cprint(
+			f'current delta: {delta}\n'
+			f'Current buffer: {self.buffer}\n'
+			f'Current message: {self.current_message}',
+			style=LogStyle.DEFAULT,
+		)
+
 		# If block prefix detected move to
 		# parsing
 		if (self.block_prefix in delta.strip()) or self.parsing_block:
@@ -173,8 +184,21 @@ class StreamManager:
 			self.buffer += delta
 			# Split buffer by newline to check for
 			# complete lines
+			cprint(
+				f'Buffering block content on {delta}, \n'
+				f'current buffer: {self.buffer}\n'
+				f'current message: {self.current_message}',
+				style=LogStyle.WARNING,
+			)
 			if '\n' in self.buffer:
 				# Add previous message content if exists
+				cprint(
+					f'Newline detected in buffer, attempting to '
+					f'parse block.\n'
+					f'Current buffer: {self.buffer}\n'
+					f'Current message: {self.current_message}',
+					style=LogStyle.WARNING,
+				)
 				if self.current_message:
 					self._add_message_content(self.current_message)
 					self.current_message = ''
@@ -183,6 +207,12 @@ class StreamManager:
 				block, self.buffer = self.buffer.split('\n', 1)
 				item = self._parse_line(block)
 				if item:
+					cprint(
+						f'Parsed block item: {item}\n'
+						f'Remaining buffer: {self.buffer}\n'
+						f'Current message: {self.current_message}',
+						style=LogStyle.SUCCESS,
+					)
 					self._add_block_content(item)
 					self.parsing_block = False
 					return StreamParsingResponse(
@@ -192,6 +222,13 @@ class StreamManager:
 				else:
 					# If parsing fails, clear buffer and
 					# reset state
+					cprint(
+						f'Failed to parse block content, \n'
+						f'clearing buffer.\n'
+						f'Current buffer: {self.buffer}\n'
+						f'Current message: {self.current_message}',
+						style=LogStyle.ERROR,
+					)
 					self.buffer = ''
 					self.parsing_block = False
 					return StreamParsingResponse(

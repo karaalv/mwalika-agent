@@ -133,6 +133,14 @@ async def _publish_agent_response(
 
 # --- Main Agent Functionality ---
 
+# TODO: There is some issue with the agents ability
+# to cohesively carry a conversation across multiple turns,
+# especially when tools are involved. Need to investigate
+# whether this is an issue with the way memory is being
+# retrieved and included in the system prompt, or if there
+# is some other issue with the way the agent is processing
+# the conversation history and tool calls.
+
 
 @guard(
 	operation='agent_chat',
@@ -303,10 +311,10 @@ async def agent_chat(
 		# Recursively call agent_chat with tool response as input
 		return await agent_chat(
 			user_id=user_id,
-			user_input=tool_response,
+			user_input=user_input,
 			session_id=session_id,
 			connection_id=connection_id,
-			recursion_instructions=recursion_instructions,
+			recursion_instructions=tool_response,
 			recursion_depth=recursion_depth + 1,
 			verbosity_level=verbosity_level,
 		)
