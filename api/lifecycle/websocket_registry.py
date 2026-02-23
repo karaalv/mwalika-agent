@@ -111,7 +111,10 @@ async def add_websocket_connection(
 
 
 async def remove_websocket_connection(
-	user_id: str, connection_id: str, reason: str = 'Normal closure'
+	user_id: str,
+	connection_id: str,
+	reason: str = 'Normal closure',
+	close_code: int = 1000,
 ):
 	"""Removes a WebSocket connection from the registry."""
 	# Exceptions handled in WebSocketRegistry
@@ -119,7 +122,7 @@ async def remove_websocket_connection(
 		op='remove_websocket_connection'
 	)
 	await registry.remove_connection(
-		user_id, connection_id, reason=reason
+		user_id, connection_id, reason=reason, close_code=close_code
 	)
 
 

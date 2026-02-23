@@ -9,12 +9,14 @@ the type of resource being accessed and the identifier
 from collections.abc import Callable
 from typing import Any
 
-from fastapi import Depends, Request
+from fastapi import Depends, Request, WebSocket
 
 from api.dependencies.auth import (
 	verify_access_header,
 	verify_refresh_token,
 )
+from api.websocket.utils import send_websocket_error_directly
+from authorisation.jwt.verify import verify_token
 from security.ratelimit.policies import ResourcePolicyType
 from security.ratelimit.store import get_limiter
 
@@ -119,6 +121,88 @@ def require_access_and_rate_limit(
 		request_ip = (
 			request.client.host if request.client else 'unknown'
 		)
+
+		# Get limiters for both user ID and IP address
+		ip_limiter = get_limiter(
+			policy_type=policy_type,
+			identifier_type='ip',
+			identifier_value=request_ip,
+		)
+
+		if user_id:
+			user_limiter = get_limiter(
+				policy_type=policy_type,
+				identifier_type='user',
+				identifier_value=user_id,
+			)
+			# If user ID is available,
+			# apply both user and IP limiters
+			async with user_limiter:
+				async with ip_limiter:
+					return user_id
+
+		# If no user ID, apply only IP limiter
+		async with ip_limiter:
+			return ''
+
+	return limiter_dependency
+
+
+def ws_require_access_and_rate_limit(
+	policy_type: ResourcePolicyType,
+) -> Callable:
+	"""
+	Factory function that creates a dependency function for
+	rate limiting based on the user's access token for WebSocket
+	endpoints. The returned dependency first verifies the access
+	token to identify the user, and then applies the appropriate
+	rate limit based on the user ID. If no valid user ID is found,
+	it falls back to IP-based rate limiting.
+	"""
+
+	async def limiter_dependency(
+		websocket: WebSocket,
+	):
+		# Attempt to get user ID from verified access token payload
+		request_ip = (
+			websocket.client.host if websocket.client else 'unknown'
+		)
+		access_token = websocket.query_params.get('access_token')
+		if not access_token:
+			# If no access token is provided,
+			# connect to send error message and
+			# close the connection
+			await websocket.accept()
+			await send_websocket_error_directly(
+				websocket=websocket,
+				error_message='Access token missing',
+				request_id='',
+				connection_id='',
+			)
+			await websocket.close(code=1008)
+			return
+
+		# Verify the access token and extract
+		# the user ID
+		try:
+			payload = verify_token(
+				token=access_token,
+				issuer='mwalika-agent',
+				typ='access',
+			)
+			user_id: str = payload.get('sub', '')
+		except Exception:
+			# If token verification fails,
+			# send error message and close connection
+			await websocket.accept()
+			await send_websocket_error_directly(
+				websocket=websocket,
+				error_message='Invalid access token',
+				request_id='',
+				connection_id='',
+			)
+			await websocket.close(code=1008)
+			return
 
 		# Get limiters for both user ID and IP address
 		ip_limiter = get_limiter(

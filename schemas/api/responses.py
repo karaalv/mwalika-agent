@@ -70,6 +70,8 @@ class WebSocketMessageType(Enum):
 	TOOL_MESSAGE = 'tool_message'
 	SET_USER_ID = 'set_user_id'
 	SET_SESSION_ID = 'set_session_id'
+	WARNING = 'warning'
+	ERROR = 'error'
 
 
 class WebSocketMessage(BaseModel):

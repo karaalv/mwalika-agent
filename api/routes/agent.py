@@ -15,7 +15,10 @@ from fastapi import (
 from agent.main import agent_chat
 from agent.memory.retrieval import retrieve_agent_memory
 from agent.sessions.deletion import delete_agent_session
-from api.dependencies.ratelimit import require_access_and_rate_limit
+from api.dependencies.ratelimit import (
+	require_access_and_rate_limit,
+	ws_require_access_and_rate_limit,
+)
 from api.lifecycle.websocket_registry import (
 	add_websocket_connection,
 	remove_websocket_connection,
@@ -24,15 +27,26 @@ from api.utils.responses import (
 	create_websocket_response,
 	http_response,
 )
+from api.websocket.utils import publish_websocket_message_event
 from authorisation.jwt.create import create_token
 from events.lifecycle import publish_event
 from schemas.api.requests import (
 	WebSocketRequest,
 	WebSocketRequestType,
 )
-from schemas.api.responses import WebSocketMessageType
+from schemas.api.responses import (
+	WebSocketMessageType,
+)
 from schemas.events.core import EventType
-from security.ratelimit.policies import ResourcePolicyType
+from security.config.agent import (
+	MAX_CONTENT_SIZE_BYTES,
+	MAX_INPUT_LENGTH,
+)
+from security.ratelimit.policies import (
+	ResourcePolicyType,
+)
+from security.ratelimit.store import get_limiter
+from shared.data import get_bytes
 from shared.ids import generate_uuid_str
 from shared.tokens import count_tokens
 from users.service.creation import create_anonymous_user
@@ -125,11 +139,13 @@ async def get_session_memory(
 # Agent interaction routes
 
 
-@agent_router.websocket('/ws/chat/')
+@agent_router.websocket(
+	'/ws/chat/',
+)
 async def agent_chat_websocket(
 	websocket: WebSocket,
 	user_id: str = Depends(
-		require_access_and_rate_limit(
+		ws_require_access_and_rate_limit(
 			ResourcePolicyType.AGENT_INTERACTION
 		)
 	),
@@ -141,6 +157,9 @@ async def agent_chat_websocket(
 	and streams responses back to the client using the
 	event bus as the communication channel.
 	"""
+	# Dependency will have already verified access
+	# token and applied the interaction rate limit
+
 	session_id = websocket.query_params.get('session_id')
 	connection_id = generate_uuid_str()
 	user_exists = bool(user_id)
@@ -161,53 +180,107 @@ async def agent_chat_websocket(
 		websocket=websocket,
 	)
 
+	# Get rate limiter instances for this
+	# connection
+	user_limiter = get_limiter(
+		policy_type=ResourcePolicyType.AGENT_MESSAGING,
+		identifier_type='user',
+		identifier_value=user_id,
+	)
+
 	# Main loop to receive messages
 	try:
 		while True:
-			# TODO: Rate limit messages here
-			data = await websocket.receive_json()
-			ws_request = WebSocketRequest.model_validate(data)
-
-			# Heartbeat handled by WebSocketManager,
-			# so ignore here
-			if ws_request.type == WebSocketRequestType.HEARTBEAT:
+			# Rate limit user messages
+			if not user_limiter.has_capacity:
+				await publish_websocket_message_event(
+					user_id=user_id,
+					connection_id=connection_id,
+					message=(
+						'Rate limit exceeded: Too many messages. '
+						'Please wait before sending more.'
+					),
+					message_type=WebSocketMessageType.WARNING,
+				)
 				continue
-			# If agent interaction message,
-			# process through agent_chat function
-			elif (
-				ws_request.type
-				== WebSocketRequestType.AGENT_INTERACTION
-			):
-				user_input = ws_request.payload.message
-				# create user if not exists, and send user ID
-				# to client
-				# TODO: validate user input, handle errors, etc.
-				if not user_exists:
-					await _create_user_send_event(
+
+			async with user_limiter:
+				data = await websocket.receive_json()
+				# Check content size to prevent abuse
+				if get_bytes(data) > MAX_CONTENT_SIZE_BYTES:
+					await publish_websocket_message_event(
 						user_id=user_id,
 						connection_id=connection_id,
+						message=(
+							'Message content too large. '
+							f'Max size is {MAX_CONTENT_SIZE_BYTES} '
+							'bytes.'
+						),
+						message_type=WebSocketMessageType.ERROR,
 					)
-					user_exists = True
+					await remove_websocket_connection(
+						user_id=user_id,
+						connection_id=connection_id,
+						reason='Content size limit exceeded',
+						close_code=1009,
+					)
+					break
 
-				# Perform agent chat interaction,
-				# which will publish events
-				await agent_chat(
-					user_id=user_id,
-					session_id=session_id,
-					user_input=user_input,
-					connection_id=connection_id,
-				)
+				# Process message based on type
+				ws_request = WebSocketRequest.model_validate(data)
 
-				# Increment usage stats for user, etc.
-				await increment_user_requests(user_id=user_id)
-				await increment_user_agent_input_tokens(
-					user_id=user_id,
-					tokens=count_tokens(user_input),
-				)
-			else:
-				# If unknown message type,
-				# ignore or log as needed
-				pass
+				# Heartbeat handled by WebSocketManager,
+				# so ignore here
+				if ws_request.type == WebSocketRequestType.HEARTBEAT:
+					continue
+				# If agent interaction message,
+				# process through agent_chat function
+				elif (
+					ws_request.type
+					== WebSocketRequestType.AGENT_INTERACTION
+				):
+					user_input = ws_request.payload.message
+					# create user if not exists, and send user ID
+					# to client for future interactions
+					if not user_exists:
+						await _create_user_send_event(
+							user_id=user_id,
+							connection_id=connection_id,
+						)
+						user_exists = True
+
+					# Enforce maximum input length
+					if len(user_input) > MAX_INPUT_LENGTH:
+						await publish_websocket_message_event(
+							user_id=user_id,
+							connection_id=connection_id,
+							message=(
+								f'Input exceeds maximum length of '
+								f'{MAX_INPUT_LENGTH} characters.'
+							),
+							message_type=WebSocketMessageType.WARNING,
+						)
+						continue
+
+					# Perform agent chat interaction,
+					# which will publish events
+					await agent_chat(
+						user_id=user_id,
+						session_id=session_id,
+						user_input=user_input,
+						connection_id=connection_id,
+					)
+
+					# Increment usage stats for user, etc.
+					await increment_user_requests(user_id=user_id)
+					await increment_user_agent_input_tokens(
+						user_id=user_id,
+						tokens=count_tokens(user_input),
+					)
+				else:
+					# If unknown message type,
+					# ignore or log as needed
+					pass
 	except WebSocketDisconnect:
 		pass
 	finally:

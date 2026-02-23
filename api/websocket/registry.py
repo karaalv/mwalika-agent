@@ -134,6 +134,7 @@ class WebSocketRegistry:
 		user_id: str,
 		connection_id: str,
 		reason: str = 'Normal closure',
+		close_code: int = 1000,
 	):
 		"""
 		Removes a WebSocket connection for the given
@@ -155,13 +156,16 @@ class WebSocketRegistry:
 		# blocking other operations
 		if manager:
 			try:
-				await manager.close(reason=reason)
+				await manager.close(reason=reason, code=close_code)
 			except Exception:
 				# Let manager handle exceptions
 				pass
 
 	async def remove_user_connections(
-		self, user_id: str, reason: str = 'Normal closure'
+		self,
+		user_id: str,
+		reason: str = 'Normal closure',
+		close_code: int = 1000,
 	):
 		"""
 		Removes all WebSocket connections for the given user.
@@ -176,13 +180,13 @@ class WebSocketRegistry:
 		# blocking other operations
 		for manager in managers:
 			try:
-				await manager.close(reason=reason)
+				await manager.close(reason=reason, code=close_code)
 			except Exception:
 				# Let manager handle exceptions
 				pass
 
 	async def close_all_connections(
-		self, reason: str = 'Normal closure'
+		self, reason: str = 'Normal closure', close_code: int = 1000
 	):
 		"""
 		Closes all WebSocket connections in the registry.
@@ -197,7 +201,7 @@ class WebSocketRegistry:
 		# blocking other operations
 		for manager in managers:
 			try:
-				await manager.close(reason=reason)
+				await manager.close(reason=reason, code=close_code)
 			except Exception:
 				# Let manager handle exceptions
 				pass

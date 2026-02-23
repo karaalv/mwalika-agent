@@ -30,6 +30,7 @@ class ResourcePolicyType(str, Enum):
 	ACCESS_TOKEN = 'access_token'
 	CLAIM_USER_COOKIE = 'claim_user_cookie'
 	AGENT_INTERACTION = 'agent_interaction'
+	AGENT_MESSAGING = 'agent_messaging'
 
 
 # --- Policy configuration dataclass ---

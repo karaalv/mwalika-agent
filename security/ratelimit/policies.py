@@ -35,4 +35,8 @@ POLICY_LIMITER_CONFIG_MAPPING: dict[
 		'ip': PolicyConfig(max_rate=300, time_period=60),
 		'user': PolicyConfig(max_rate=60, time_period=60),
 	},
+	ResourcePolicyType.AGENT_MESSAGING: {
+		'ip': PolicyConfig(max_rate=500, time_period=60),
+		'user': PolicyConfig(max_rate=20, time_period=60),
+	},
 }
