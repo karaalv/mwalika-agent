@@ -4,11 +4,18 @@ such as agent interactions, agent session management,
 and other agent-related functionalities.
 """
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+	APIRouter,
+	Depends,
+	Request,
+	WebSocket,
+	WebSocketDisconnect,
+)
 
 from agent.main import agent_chat
 from agent.memory.retrieval import retrieve_agent_memory
 from agent.sessions.deletion import delete_agent_session
+from api.dependencies.ratelimit import require_access_and_rate_limit
 from api.lifecycle.websocket_registry import (
 	add_websocket_connection,
 	remove_websocket_connection,
@@ -25,6 +32,7 @@ from schemas.api.requests import (
 )
 from schemas.api.responses import WebSocketMessageType
 from schemas.events.core import EventType
+from security.ratelimit.policies import ResourcePolicyType
 from shared.ids import generate_uuid_str
 from shared.tokens import count_tokens
 from users.service.creation import create_anonymous_user
@@ -43,7 +51,15 @@ agent_router = APIRouter()
 
 
 @agent_router.delete('/session/{session_id}')
-async def delete_session(request: Request, session_id: str):
+async def delete_session(
+	request: Request,
+	session_id: str,
+	user_id: str = Depends(
+		require_access_and_rate_limit(
+			ResourcePolicyType.AGENT_INTERACTION
+		)
+	),
+):
 	"""
 	API endpoint to delete an agent session
 	and all associated data.
@@ -51,9 +67,8 @@ async def delete_session(request: Request, session_id: str):
 	request_id = getattr(request.state, 'request_id', '')
 	await delete_agent_session(session_id)
 
-	# Increment user request count for usage stats
-	cookies = request.cookies
-	user_id = cookies.get('user_id')
+	# Increment user request count
+	# for usage stats
 	if user_id:
 		await increment_user_requests(user_id=user_id)
 
@@ -65,14 +80,20 @@ async def delete_session(request: Request, session_id: str):
 
 
 @agent_router.get('/session/{session_id}/memory')
-async def get_session_memory(request: Request, session_id: str):
+async def get_session_memory(
+	request: Request,
+	session_id: str,
+	user_id: str = Depends(
+		require_access_and_rate_limit(
+			ResourcePolicyType.AGENT_INTERACTION
+		)
+	),
+):
 	"""
 	API endpoint to retrieve all memory entries
 	associated with a specific agent session.
 	"""
 	request_id = getattr(request.state, 'request_id', '')
-	cookies = request.cookies
-	user_id = cookies.get('user_id')
 
 	if not user_id:
 		return http_response(
@@ -105,7 +126,14 @@ async def get_session_memory(request: Request, session_id: str):
 
 
 @agent_router.websocket('/ws/chat/')
-async def agent_chat_websocket(websocket: WebSocket):
+async def agent_chat_websocket(
+	websocket: WebSocket,
+	user_id: str = Depends(
+		require_access_and_rate_limit(
+			ResourcePolicyType.AGENT_INTERACTION
+		)
+	),
+):
 	"""
 	WebSocket endpoint for agent chat interactions.
 	This endpoint receives messages from the client,
@@ -113,7 +141,6 @@ async def agent_chat_websocket(websocket: WebSocket):
 	and streams responses back to the client using the
 	event bus as the communication channel.
 	"""
-	user_id = websocket.cookies.get('user_id')
 	session_id = websocket.query_params.get('session_id')
 	connection_id = generate_uuid_str()
 	user_exists = bool(user_id)
@@ -137,6 +164,7 @@ async def agent_chat_websocket(websocket: WebSocket):
 	# Main loop to receive messages
 	try:
 		while True:
+			# TODO: Rate limit messages here
 			data = await websocket.receive_json()
 			ws_request = WebSocketRequest.model_validate(data)
 
@@ -153,6 +181,7 @@ async def agent_chat_websocket(websocket: WebSocket):
 				user_input = ws_request.payload.message
 				# create user if not exists, and send user ID
 				# to client
+				# TODO: validate user input, handle errors, etc.
 				if not user_exists:
 					await _create_user_send_event(
 						user_id=user_id,
@@ -202,8 +231,8 @@ async def _create_user_send_event(
 	"""
 	await create_anonymous_user(user_id=user_id)
 	claim_token = create_token(
-		user_id=user_id,
-		issuer='mwalika-agent',
+		sub=user_id,
+		iss='mwalika-agent',
 		typ='claim',
 	)
 	ws_response = create_websocket_response(

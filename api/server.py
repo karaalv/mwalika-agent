@@ -8,11 +8,12 @@ from contextlib import asynccontextmanager
 
 import sentry_sdk
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
+from api.dependencies.ratelimit import rate_limit_ip
 from api.lifecycle.config import (
 	check_environment,
 	shutdown,
@@ -25,6 +26,7 @@ from api.routes.users import users_router
 from api.utils.responses import http_response
 from exceptions.api import APIException
 from exceptions.core import ErrorContext
+from schemas.security.ratelimit import ResourcePolicyType
 from shared.logging import LogStyle, cprint
 
 # Load environment
@@ -158,11 +160,16 @@ app.add_middleware(RequestIdMiddleware)
 # --- Route imports ---
 
 app.include_router(
-	router=system_router, prefix='/system', tags=['System']
+	router=system_router,
+	prefix='/system',
+	tags=['System'],
+	dependencies=[Depends(rate_limit_ip(ResourcePolicyType.SYSTEM))],
 )
 
 app.include_router(
-	router=agent_router, prefix='/agent', tags=['Agent']
+	router=agent_router,
+	prefix='/agent',
+	tags=['Agent'],
 )
 
 app.include_router(

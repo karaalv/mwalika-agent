@@ -19,8 +19,8 @@ _JWT_SECRET = getenv('JWT_SECRET')
 
 
 def create_token(
-	user_id: str,
-	issuer: str,
+	sub: str,
+	iss: str,
 	typ: str,
 	ttl_seconds: int = 180,
 ) -> str:
@@ -28,8 +28,8 @@ def create_token(
 
 	payload: dict[str, Any] = {
 		'typ': typ,
-		'sub': user_id,
-		'iss': issuer,
+		'sub': sub,
+		'iss': iss,
 		'iat': now,
 		'exp': now + ttl_seconds,
 		'jti': generate_uuid_str(),
