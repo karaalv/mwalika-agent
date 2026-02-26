@@ -20,6 +20,7 @@ class MongoDBDatabase(str, Enum):
 	MWALIKA_CORPUS = 'mwalika_corpus'
 	CHATS = 'chats'
 	MWALIKA_IDENTITY = 'mwalika_identity'
+	MWALIKA_SECURITY = 'mwalika_security'
 
 
 class MongoDBCollection(str, Enum):
@@ -36,7 +37,11 @@ class MongoDBCollection(str, Enum):
 
 	# Collections for Mwalika Identity database
 	USERS = 'users'
+
+	# Collections for Mwalika Security database
 	USER_USAGE_STATS = 'user_usage_stats'
+	IP_USAGE_STATS = 'ip_usage_stats'
+	BLOCKED_ENTITIES = 'blocked_entities'
 
 
 # Mapping between collection and
@@ -53,8 +58,15 @@ _collection_map: dict[MongoDBCollection, MongoDBDatabase] = {
 	MongoDBCollection.MEMORIES: MongoDBDatabase.CHATS,
 	# Mwalika Identity database
 	MongoDBCollection.USERS: MongoDBDatabase.MWALIKA_IDENTITY,
+	# Mwalika Security database
 	MongoDBCollection.USER_USAGE_STATS: (
-		MongoDBDatabase.MWALIKA_IDENTITY
+		MongoDBDatabase.MWALIKA_SECURITY
+	),
+	MongoDBCollection.IP_USAGE_STATS: (
+		MongoDBDatabase.MWALIKA_SECURITY
+	),
+	MongoDBCollection.BLOCKED_ENTITIES: (
+		MongoDBDatabase.MWALIKA_SECURITY
 	),
 }
 

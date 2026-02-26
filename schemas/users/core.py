@@ -35,14 +35,6 @@ class AnonymousUser(BaseModel):
 			'memories, and other data with this user'
 		),
 	)
-	is_blocked: bool = Field(
-		default=False,
-		description=(
-			'Indicates whether the user is blocked from interacting '
-			'with agents, which can be used to enforce bans or '
-			'suspensions'
-		),
-	)
 	language_preference: LanguagePreference = Field(
 		default=LanguagePreference.ENGLISH,
 		description=(

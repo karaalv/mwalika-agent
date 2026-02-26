@@ -14,6 +14,7 @@ from api.config.settings import (
 )
 from api.dependencies.ratelimit import (
 	require_access_and_rate_limit,
+	require_frontend_and_rate_limit,
 	require_refresh_and_rate_limit,
 )
 from api.utils.responses import http_response
@@ -28,8 +29,19 @@ users_router = APIRouter()
 # --- API routes ---
 
 
-@users_router.get('/mwalika-rt')
-async def get_general_refresh_token(request: Request):
+@users_router.get(
+	'/mwalika-rt',
+	dependencies=[
+		Depends(
+			require_frontend_and_rate_limit(
+				ResourcePolicyType.ACCESS_TOKEN
+			)
+		)
+	],
+)
+async def get_refresh_token(
+	request: Request,
+):
 	"""
 	An endpoint to provide a general refresh token for the client.
 	This token grants access to the agent endpoint which will
@@ -49,6 +61,7 @@ async def get_general_refresh_token(request: Request):
 		message='General refresh token generated successfully',
 	)
 
+	# TODO: Track token usage
 	response.set_cookie(
 		key='mwalika_rt',
 		value=token,
@@ -65,7 +78,7 @@ async def get_general_refresh_token(request: Request):
 @users_router.get(
 	'/mwalika-at',
 )
-async def get_general_access_token(
+async def get_access_token(
 	request: Request,
 	user_id: str = Depends(
 		require_refresh_and_rate_limit(
@@ -132,14 +145,16 @@ async def claim_cookie(
 	),
 ):
 	"""
-	An endpoint to verify the claim token sent by the client,
-	and set the user ID in the cookies if the token is valid.
+	An endpoint that allows a client to claim a user ID by providing
+	a valid claim token. This sets the user ID in a cookie and issues
+	a new refresh token associated with that user ID.
 	"""
 	request_id = getattr(request.state, 'request_id', '')
 	body: dict = await request.json()
 	claim_token = body.get('claim_token')
+	claim_user_id = body.get('user_id')
 
-	if not claim_token or not user_id:
+	if not claim_token or not claim_user_id:
 		return http_response(
 			request_id=request_id,
 			success=False,
@@ -157,7 +172,7 @@ async def claim_cookie(
 			issuer='mwalika-agent',
 			typ='claim',
 		)
-		if payload.get('user_id') != user_id:
+		if payload.get('sub') != claim_user_id:
 			raise ValueError(
 				'Token user_id does not match provided user_id'
 			)
@@ -187,6 +202,25 @@ async def claim_cookie(
 		samesite='lax',
 		max_age=USER_ID_COOKIE_EXPIRY_SECONDS,
 		expires=USER_ID_COOKIE_EXPIRY_SECONDS,
+		domain=COOKIE_DOMAIN,
+	)
+
+	# Create new refresh token for the user
+	new_refresh_token = create_token(
+		sub=user_id,
+		iss='mwalika-agent',
+		typ='refresh',
+		ttl_seconds=REFRESH_TOKEN_COOKIE_EXPIRY_SECONDS,
+	)
+
+	response.set_cookie(
+		key='mwalika_rt',
+		value=new_refresh_token,
+		httponly=True,
+		secure=True,
+		samesite='lax',
+		max_age=REFRESH_TOKEN_COOKIE_EXPIRY_SECONDS,
+		expires=REFRESH_TOKEN_COOKIE_EXPIRY_SECONDS,
 		domain=COOKIE_DOMAIN,
 	)
 	return response

@@ -93,9 +93,13 @@ mongodb
 │   ├── Collection: sessions
 │   └── Collection: memories
 │
-└── Database: mwalika_identity
-    ├── Collection: users
-    └── Collection: user_usage_stats
+├── Database: mwalika_identity
+│   └── Collection: users
+│
+└── Database: mwalika_security
+    ├── Collection: user_usage_stats
+    ├── Collection: ip_usage_stats
+    └── Collection: blocked_entities
 ```
 
 Indexes may be added as performance requirements evolve.
@@ -173,7 +177,7 @@ This aligns with the agent's structured streaming format (NDJSON-style blocks), 
 
 ### 3.3 Database: mwalika_identity
 
-The `mwalika_identity` database stores user-related data, including anonymous users and their usage statistics.
+The `mwalika_identity` database stores user-related data for the anonymous user system.
 
 #### Collection: users
 
@@ -182,24 +186,64 @@ Stores information about anonymous users.
 ```typescript
 interface AnonymousUser {
     user_id: string;
-    is_blocked: boolean;
     language_preference: 'english' | 'swahili';
     created_at: string;      // ISO 8601 (UTC)
     last_active_at: string;  // ISO 8601 (UTC)
 }
 ```
 
+### 3.4 Database: mwalika_security
+
+The `mwalika_security` database stores data related to security monitoring, rate limiting, and user behavior tracking.
+
 #### Collection: user_usage_stats
 
 Stores usage statistics for each user.
 
+<!-- TODO: Update these interfaces to match the latest user observer implementation -->
 ```typescript
 interface UserUsageStats {
     user_id: string;
+    day_key: string; // e.g. '2024-06-01'
+    blocked_count: number;
+    last_blocked_at: number | null; // Seconds since epoch
     requests_today: number;
-    agent_input_tokens: number;
     agent_input_tokens_today: number;
-    last_request_timestamp: string; // ISO 8601 (UTC)
+    active_ws_connections: string[]; // List of active WebSocket connection IDs
+    bad_requests_today: number; // Requests that triggered security rules
+    last_api_request_at: number | null; // Seconds since epoch
+}
+```
+
+#### Collection: ip_usage_stats
+
+Stores usage statistics for each IP address.
+
+```typescript
+interface IPUsageStats {
+    ip_address: string;
+    day_key: string; // e.g. '2024-06-01'
+    blocked_count: number;
+    last_blocked_at: number | null; // Seconds since epoch
+    requests_today: number;
+    agent_input_tokens_today: number;
+    active_ws_connections: string[]; // List of active WebSocket connection IDs
+    bad_requests_today: number; // Requests that triggered security rules
+    last_api_request_at: number | null; // Seconds since epoch
+}
+```
+
+#### Collection: blocked_entities
+
+Stores records of blocked entities (users, IP addresses or tokens) for security enforcement.
+
+```typescript
+interface BlockedEntity {
+    entity_id: string; // user_id, ip_address or token identifier
+    entity_type: 'user' | 'ip' | 'refresh_token' | 'access_token';
+    reason: string;
+    blocked_at: string; // ISO 8601 (UTC)
+    blocked_until: int; // Seconds since epoch when the block expires
 }
 ```
 

@@ -24,6 +24,7 @@ def verify_refresh_token(request: Request):
 		payload = verify_token(
 			token=refresh_token, issuer='mwalika-agent', typ='refresh'
 		)
+		# TODO: Check for block status, etc. here as well if needed
 		return payload  # Return the token payload
 	except Exception as e:
 		raise HTTPException(
@@ -32,7 +33,9 @@ def verify_refresh_token(request: Request):
 		) from e
 
 
-def verify_access_header(authorization: str | None = Header(...)):
+def verify_access_header(
+	request: Request, authorization: str | None = Header(...)
+):
 	"""
 	Dependency to verify the Authorization header
 	for protected endpoints. Expects a Bearer token and
@@ -53,6 +56,35 @@ def verify_access_header(authorization: str | None = Header(...)):
 		payload = verify_token(
 			token=token, issuer='mwalika-agent', typ='access'
 		)
+		# TODO: Check for block status, etc. here as well if needed
+		return payload  # Return the token payload
+	except Exception as e:
+		raise HTTPException(
+			status_code=status.HTTP_401_UNAUTHORIZED,
+			detail=str(e),
+		) from e
+
+
+def verify_frontend_header(
+	request: Request, x_mwalika: str | None = Header(...)
+):
+	"""
+	Dependency to verify the presence of a custom header
+	that indicates the request is coming from the frontend.
+	This can be used for additional security checks or
+	to apply specific logic for frontend requests.
+	"""
+	if x_mwalika != 'frontend':
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail='Invalid X-Mwalika header',
+		)
+	token = x_mwalika
+	try:
+		payload = verify_token(
+			token=token, issuer='mwalika-agent', typ='frontend'
+		)
+		# TODO: Check for block status, etc. here as well if needed
 		return payload  # Return the token payload
 	except Exception as e:
 		raise HTTPException(

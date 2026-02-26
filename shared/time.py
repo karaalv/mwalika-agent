@@ -3,6 +3,7 @@ This module contains shared time-related utilities
 and constants for the Mwalika Agent system.
 """
 
+import time
 from datetime import datetime, timezone
 
 
@@ -27,3 +28,18 @@ def get_datetime(
 	if not timestamp:
 		return datetime.now(timezone.utc)
 	return datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+
+
+def get_timestamp_s() -> int:
+	"""
+	Returns the current timestamp in seconds since epoch.
+	"""
+	return int(time.time())
+
+
+def get_utc_day_key() -> str:
+	"""
+	Returns current UTC date in YYYY-MM-DD format.
+	Example: "2026-02-24"
+	"""
+	return datetime.now(timezone.utc).date().isoformat()

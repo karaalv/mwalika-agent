@@ -13,8 +13,10 @@ from fastapi import Depends, Request, WebSocket
 
 from api.dependencies.auth import (
 	verify_access_header,
+	verify_frontend_header,
 	verify_refresh_token,
 )
+from api.utils.ip_addresses import get_http_ip, get_ws_ip
 from api.websocket.utils import send_websocket_error_directly
 from authorisation.jwt.verify import verify_token
 from security.ratelimit.policies import ResourcePolicyType
@@ -34,9 +36,40 @@ def rate_limit_ip(
 	"""
 
 	async def limiter_dependency(request: Request):
-		request_ip = (
-			request.client.host if request.client else 'unknown'
+		request_ip = get_http_ip(request)
+
+		# TODO: Check if IP is blocked and deal with that before
+		# attempting
+
+		limiter = get_limiter(
+			policy_type=policy_type,
+			identifier_type='ip',
+			identifier_value=request_ip,
 		)
+
+		# Attempt to acquire a slot in the limiter,
+		# which will enforce the rate limit
+		async with limiter:
+			return
+
+	return limiter_dependency
+
+
+def require_frontend_and_rate_limit(
+	policy_type: ResourcePolicyType,
+) -> Callable:
+	"""
+	Factory function that creates a dependency function for
+	rate limiting based on the presence of a valid frontend
+	header. This is used to apply rate limits to requests that
+	originate from the frontend, identified by a specific header.
+	"""
+
+	async def limiter_dependency(
+		request: Request,
+		payload: dict[str, Any] = Depends(verify_frontend_header),  # noqa: B008
+	):
+		request_ip = get_http_ip(request)
 
 		limiter = get_limiter(
 			policy_type=policy_type,
@@ -70,9 +103,7 @@ def require_refresh_and_rate_limit(
 	):
 		# Attempt to get user ID from verified refresh token payload
 		user_id = payload.get('sub', '')
-		request_ip = (
-			request.client.host if request.client else 'unknown'
-		)
+		request_ip = get_http_ip(request)
 
 		# Get limiters for both user ID and IP address
 		ip_limiter = get_limiter(
@@ -118,9 +149,7 @@ def require_access_and_rate_limit(
 	):
 		# Attempt to get user ID from verified access token payload
 		user_id = payload.get('sub', '')
-		request_ip = (
-			request.client.host if request.client else 'unknown'
-		)
+		request_ip = get_http_ip(request)
 
 		# Get limiters for both user ID and IP address
 		ip_limiter = get_limiter(
@@ -164,9 +193,8 @@ def ws_require_access_and_rate_limit(
 		websocket: WebSocket,
 	):
 		# Attempt to get user ID from verified access token payload
-		request_ip = (
-			websocket.client.host if websocket.client else 'unknown'
-		)
+		request_ip = get_ws_ip(websocket)
+
 		access_token = websocket.query_params.get('access_token')
 		if not access_token:
 			# If no access token is provided,
@@ -212,6 +240,7 @@ def ws_require_access_and_rate_limit(
 		)
 
 		if user_id:
+			# TODO: Check if user is blocked and deal with that
 			user_limiter = get_limiter(
 				policy_type=policy_type,
 				identifier_type='user',
@@ -223,6 +252,7 @@ def ws_require_access_and_rate_limit(
 				async with ip_limiter:
 					return user_id
 
+		# TODO: Check if IP is blocked and deal with that
 		# If no user ID, apply only IP limiter
 		async with ip_limiter:
 			return ''

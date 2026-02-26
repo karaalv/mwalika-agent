@@ -56,3 +56,19 @@ def add_breadcrumb(
 		level=level.value,
 		data=data or {},
 	)
+
+
+def add_breadcrumb_capture_exception(
+	category: str,
+	message: str,
+	cause: Exception,
+	level: BreadcrumbLevel = BreadcrumbLevel.ERROR,
+	data: dict[str, Any] | None = None,
+) -> None:
+	add_breadcrumb(
+		category=category,
+		message=message,
+		level=level,
+		data=data,
+	)
+	sentry_sdk.capture_exception(cause)

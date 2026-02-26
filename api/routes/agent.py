@@ -48,12 +48,7 @@ from security.ratelimit.policies import (
 from security.ratelimit.store import get_limiter
 from shared.data import get_bytes
 from shared.ids import generate_uuid_str
-from shared.tokens import count_tokens
 from users.service.creation import create_anonymous_user
-from users.service.update import (
-	increment_user_agent_input_tokens,
-	increment_user_requests,
-)
 
 # --- Router setup ---
 
@@ -81,10 +76,8 @@ async def delete_session(
 	request_id = getattr(request.state, 'request_id', '')
 	await delete_agent_session(session_id)
 
-	# Increment user request count
+	# TODO: Increment user request count
 	# for usage stats
-	if user_id:
-		await increment_user_requests(user_id=user_id)
 
 	return http_response(
 		request_id=request_id,
@@ -122,8 +115,7 @@ async def get_session_memory(
 		user_id=user_id,
 	)
 
-	# Increment user request count for usage stats
-	await increment_user_requests(user_id=user_id)
+	# TODO: Increment user request count for usage stats
 
 	return http_response(
 		request_id=request_id,
@@ -189,6 +181,9 @@ async def agent_chat_websocket(
 	)
 
 	# Main loop to receive messages
+	# TODO: IF user gets blocked while connection is open, need to
+	# handle that case and close the connection or prevent further
+	# messages from being processed until block expires, etc.
 	try:
 		while True:
 			# Rate limit user messages
@@ -271,12 +266,7 @@ async def agent_chat_websocket(
 						connection_id=connection_id,
 					)
 
-					# Increment usage stats for user, etc.
-					await increment_user_requests(user_id=user_id)
-					await increment_user_agent_input_tokens(
-						user_id=user_id,
-						tokens=count_tokens(user_input),
-					)
+					# TODO: Increment usage stats for user, etc.
 				else:
 					# If unknown message type,
 					# ignore or log as needed
