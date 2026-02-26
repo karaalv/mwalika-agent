@@ -77,9 +77,7 @@ class UserObserver:
 		)
 		# Used for cleanup
 		self._cleanup_interval_seconds = 60 * 60  # 1 hour
-		self._persistence_time_s = (
-			7 * 24 * 60 * 60
-		)  # 7 days in seconds
+		self._retention_time_s = 7 * 24 * 60 * 60  # 7 days in seconds
 		self._deletion_batch_size = 250
 		self._cleanup_task: asyncio.Task | None = None
 
@@ -1016,7 +1014,7 @@ class UserObserver:
 				data={'user_ids': user_ids},
 			)
 
-	async def _delete_blocked_user_from_db(
+	async def _delete_blocked_users_from_db(
 		self, user_ids: list[str]
 	) -> None:
 		"""
@@ -1067,7 +1065,7 @@ class UserObserver:
 		try:
 			while True:
 				cutoff_time = (
-					get_timestamp_s() - self._persistence_time_s
+					get_timestamp_s() - self._retention_time_s
 				)
 				expired_user_ids = []
 
@@ -1076,6 +1074,7 @@ class UserObserver:
 						if (
 							stats.last_blocked_at
 							and stats.last_blocked_at < cutoff_time
+							and user_id not in self._blocked_users
 						):
 							expired_user_ids.append(user_id)
 
@@ -1089,7 +1088,7 @@ class UserObserver:
 					await self._delete_user_stats_from_db(
 						expired_user_ids
 					)
-					await self._delete_blocked_user_from_db(
+					await self._delete_blocked_users_from_db(
 						expired_user_ids
 					)
 

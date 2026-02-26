@@ -185,6 +185,32 @@ class WebSocketRegistry:
 				# Let manager handle exceptions
 				pass
 
+	async def remove_users_connections(
+		self,
+		user_ids: list[str],
+		reason: str = 'Normal closure',
+		close_code: int = 1000,
+	):
+		"""
+		Removes all WebSocket connections for the given list of
+		user IDs.
+		"""
+		managers: list[WebSocketManager] = []
+		async with self._lock:
+			for user_id in user_ids:
+				if user_id in self._registry:
+					managers.extend(self._registry[user_id].values())
+					del self._registry[user_id]
+
+		# Close managers outside of lock to avoid
+		# blocking other operations
+		for manager in managers:
+			try:
+				await manager.close(reason=reason, code=close_code)
+			except Exception:
+				# Let manager handle exceptions
+				pass
+
 	async def close_all_connections(
 		self, reason: str = 'Normal closure', close_code: int = 1000
 	):

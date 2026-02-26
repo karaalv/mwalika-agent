@@ -43,3 +43,31 @@ def get_utc_day_key() -> str:
 	Example: "2026-02-24"
 	"""
 	return datetime.now(timezone.utc).date().isoformat()
+
+
+def to_iso8601_z(
+	value: datetime | int | float,
+) -> str:
+	"""
+	Convert a datetime or Unix timestamp (seconds)
+	into a UTC ISO8601 string with 'Z' suffix.
+	"""
+
+	if isinstance(value, (int, float)):
+		dt = datetime.fromtimestamp(
+			value,
+			tz=timezone.utc,
+		)
+	elif isinstance(value, datetime):
+		dt = value
+		if dt.tzinfo is None:
+			# Assume naive datetimes are UTC
+			dt = dt.replace(tzinfo=timezone.utc)
+		else:
+			dt = dt.astimezone(timezone.utc)
+	else:
+		raise TypeError(
+			f'Unsupported type for timestamp: {type(value)}'
+		)
+
+	return dt.isoformat().replace('+00:00', 'Z')

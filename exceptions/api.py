@@ -35,3 +35,13 @@ class WebSocketRegistryException(APIException):
 	"""
 
 	pass
+
+
+class ApiMaintenanceException(APIException):
+	"""
+	Exception raised for errors related to API
+	maintenance tasks, such as data pruning failures,
+	background task errors, or scheduler issues.
+	"""
+
+	pass

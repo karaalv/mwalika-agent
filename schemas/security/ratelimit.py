@@ -7,14 +7,13 @@ different API routes and resource types.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
 from typing import Literal
 
 from aiolimiter import AsyncLimiter
 from pydantic import BaseModel, Field
 
-from shared.time import get_datetime
+from shared.time import get_timestamp_s
 
 # --- Resource policy types ---
 
@@ -89,8 +88,8 @@ class RateLimiter(BaseModel):
 			'enforces the rate limit'
 		),
 	)
-	created_at: datetime = Field(
-		default_factory=get_datetime,
+	created_at: int = Field(
+		default_factory=get_timestamp_s,
 		description=(
 			'The timestamp when this limiter instance was created, '
 			'which can be '

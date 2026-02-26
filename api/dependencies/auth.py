@@ -53,7 +53,7 @@ async def require_frontend_header(
 	await check_ip_blocked(ip)
 
 	# Rate limit auth dependencies based on IP
-	limiter = get_limiter(
+	limiter = await get_limiter(
 		policy_type=ResourcePolicyType.API_DEPENDENCY,
 		identifier_type='ip',
 		identifier_value=ip,
@@ -90,7 +90,7 @@ async def require_refresh_token(request: Request):
 	await check_ip_blocked(ip)
 
 	# Rate limit auth dependencies based on IP
-	limiter = get_limiter(
+	limiter = await get_limiter(
 		policy_type=ResourcePolicyType.API_DEPENDENCY,
 		identifier_type='ip',
 		identifier_value=ip,
@@ -139,7 +139,7 @@ async def require_access_header(
 	await check_ip_blocked(ip)
 
 	# Rate limit auth dependencies based on IP
-	limiter = get_limiter(
+	limiter = await get_limiter(
 		policy_type=ResourcePolicyType.API_DEPENDENCY,
 		identifier_type='ip',
 		identifier_value=ip,
@@ -199,7 +199,7 @@ async def ws_require_access_token(websocket: WebSocket):
 		raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
 	# Rate limit auth dependencies based on IP
-	limiter = get_limiter(
+	limiter = await get_limiter(
 		policy_type=ResourcePolicyType.API_DEPENDENCY,
 		identifier_type='ip',
 		identifier_value=ip,

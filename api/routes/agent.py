@@ -192,7 +192,7 @@ async def agent_chat_websocket(
 
 	# Get rate limiter instances for this
 	# connection
-	limiter = get_limiter(
+	limiter = await get_limiter(
 		policy_type=ResourcePolicyType.AGENT_MESSAGING,
 		identifier_type='user',
 		identifier_value=user_id,

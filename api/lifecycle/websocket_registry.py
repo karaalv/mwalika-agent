@@ -126,6 +126,24 @@ async def remove_websocket_connection(
 	)
 
 
+async def remove_users_websocket_connections(
+	user_ids: list[str],
+	reason: str = 'Normal closure',
+	close_code: int = 1000,
+):
+	"""
+	Removes all WebSocket connections for a list of users
+	from the registry.
+	"""
+	# Exceptions handled in WebSocketRegistry
+	registry = get_websocket_registry(
+		op='remove_users_websocket_connections'
+	)
+	await registry.remove_users_connections(
+		user_ids, reason=reason, close_code=close_code
+	)
+
+
 # Sending functions
 
 

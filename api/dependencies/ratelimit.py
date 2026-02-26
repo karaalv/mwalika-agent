@@ -47,7 +47,7 @@ def rate_limit_ip(
 		# Check if the IP is blocked
 		await check_ip_blocked(request_ip)
 
-		limiter = get_limiter(
+		limiter = await get_limiter(
 			policy_type=policy_type,
 			identifier_type='ip',
 			identifier_value=request_ip,
@@ -77,7 +77,7 @@ def require_frontend_and_rate_limit(
 	):
 		request_ip = get_http_ip(request)
 
-		limiter = get_limiter(
+		limiter = await get_limiter(
 			policy_type=policy_type,
 			identifier_type='ip',
 			identifier_value=request_ip,
@@ -112,14 +112,14 @@ def require_refresh_and_rate_limit(
 		request_ip = get_http_ip(request)
 
 		# Get limiters for both user ID and IP address
-		ip_limiter = get_limiter(
+		ip_limiter = await get_limiter(
 			policy_type=policy_type,
 			identifier_type='ip',
 			identifier_value=request_ip,
 		)
 
 		if user_id:
-			user_limiter = get_limiter(
+			user_limiter = await get_limiter(
 				policy_type=policy_type,
 				identifier_type='user',
 				identifier_value=user_id,
@@ -158,14 +158,14 @@ def require_access_and_rate_limit(
 		request_ip = get_http_ip(request)
 
 		# Get limiters for both user ID and IP address
-		ip_limiter = get_limiter(
+		ip_limiter = await get_limiter(
 			policy_type=policy_type,
 			identifier_type='ip',
 			identifier_value=request_ip,
 		)
 
 		if user_id:
-			user_limiter = get_limiter(
+			user_limiter = await get_limiter(
 				policy_type=policy_type,
 				identifier_type='user',
 				identifier_value=user_id,
@@ -203,14 +203,14 @@ def ws_require_access_and_rate_limit(
 		user_id = payload.get('sub', '')
 
 		# Get limiters for both user ID and IP address
-		ip_limiter = get_limiter(
+		ip_limiter = await get_limiter(
 			policy_type=policy_type,
 			identifier_type='ip',
 			identifier_value=request_ip,
 		)
 
 		if user_id:
-			user_limiter = get_limiter(
+			user_limiter = await get_limiter(
 				policy_type=policy_type,
 				identifier_type='user',
 				identifier_value=user_id,

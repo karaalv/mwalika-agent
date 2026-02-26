@@ -72,9 +72,7 @@ class IpObserver:
 		)
 		# Used for cleanup
 		self._cleanup_interval_seconds = 60 * 60  # 1 hour
-		self._persistence_time_s = (
-			7 * 24 * 60 * 60
-		)  # 7 days in seconds
+		self._retention_time_s = 7 * 24 * 60 * 60  # 7 days in seconds
 		self._deletion_batch_size = 100
 		self._cleanup_task: asyncio.Task | None = None
 
@@ -1021,7 +1019,7 @@ class IpObserver:
 				level=BreadcrumbLevel.ERROR,
 			)
 
-	async def _delete_blocked_ip_from_db(
+	async def _delete_blocked_ips_from_db(
 		self, ip_addresses: list[str]
 	):
 		"""
@@ -1044,8 +1042,10 @@ class IpObserver:
 				)
 		except Exception as e:
 			add_breadcrumb_capture_exception(
-				category='ip_observer_delete_blocked_ip',
-				message=('Failed to delete blocked IP from database'),
+				category='ip_observer_delete_blocked_ips',
+				message=(
+					'Failed to delete blocked IPs from database'
+				),
 				cause=e,
 				level=BreadcrumbLevel.ERROR,
 			)
@@ -1071,7 +1071,7 @@ class IpObserver:
 		try:
 			while True:
 				cutoff_time = (
-					get_timestamp_s() - self._persistence_time_s
+					get_timestamp_s() - self._retention_time_s
 				)
 				ip_addresses_to_delete = []
 
@@ -1084,6 +1084,7 @@ class IpObserver:
 							stats.last_api_request_at
 							and stats.last_api_request_at
 							< cutoff_time
+							and ip_address not in self._blocked_ips
 						):
 							ip_addresses_to_delete.append(ip_address)
 
@@ -1097,7 +1098,7 @@ class IpObserver:
 					await self._delete_ip_stats_from_db(
 						ip_addresses_to_delete
 					)
-					await self._delete_blocked_ip_from_db(
+					await self._delete_blocked_ips_from_db(
 						ip_addresses_to_delete
 					)
 

@@ -4,6 +4,7 @@ allowing for easy access and management of different rate limiting
 policies across the Mwalika Agent.
 """
 
+import asyncio
 from typing import Literal
 
 from aiolimiter import AsyncLimiter
@@ -17,11 +18,25 @@ from security.ratelimit.policies import (
 # --- User route limiters ---
 
 _limiters: dict[str, RateLimiter] = {}
+_limiters_lock = asyncio.Lock()
+
+# --- Accessor function for store
+
+
+async def get_all_limiters() -> dict[str, RateLimiter]:
+	"""
+	Returns a copy of the current limiters in the store, which can be
+	useful for debugging, monitoring, or administrative purposes to
+	see the active rate limiters and their configurations.
+	"""
+	async with _limiters_lock:
+		return _limiters.copy()
+
 
 # --- Accessor function for limiters ---
 
 
-def get_limiter(
+async def get_limiter(
 	policy_type: ResourcePolicyType,
 	identifier_type: Literal['ip', 'user'],
 	identifier_value: str,
@@ -33,15 +48,52 @@ def get_limiter(
 	limiter for enforcing rate limits.
 	"""
 	key = f'{policy_type.value}:{identifier_type}:{identifier_value}'
-	if key not in _limiters:
-		config = POLICY_LIMITER_CONFIG_MAPPING[policy_type][
-			identifier_type
-		]
-		limiter = RateLimiter(
-			policy_type=policy_type,
-			identifier_type=identifier_type,
-			identifier_value=identifier_value,
-			limiter=AsyncLimiter(config.max_rate, config.time_period),
-		)
-		_limiters[key] = limiter
+	async with _limiters_lock:
+		if key not in _limiters:
+			config = POLICY_LIMITER_CONFIG_MAPPING[policy_type][
+				identifier_type
+			]
+			limiter = RateLimiter(
+				policy_type=policy_type,
+				identifier_type=identifier_type,
+				identifier_value=identifier_value,
+				limiter=AsyncLimiter(
+					config.max_rate, config.time_period
+				),
+			)
+			_limiters[key] = limiter
 	return _limiters[key].limiter
+
+
+# --- Cleanup function for limiters ---
+
+
+async def delete_limiter(
+	policy_type: ResourcePolicyType,
+	identifier_type: Literal['ip', 'user'],
+	identifier_value: str,
+) -> None:
+	"""
+	Deletes a limiter from the store, which can be useful for cleanup
+	when an IP address or user is no longer active or relevant for
+	rate limiting.
+	"""
+	key = f'{policy_type.value}:{identifier_type}:{identifier_value}'
+	async with _limiters_lock:
+		if key in _limiters:
+			del _limiters[key]
+
+
+async def delete_limiters_by_keys(
+	limiter_keys: list[str],
+) -> None:
+	"""
+	Deletes multiple limiters from the store based on a list of keys.
+	This can be used for batch cleanup operations, such as when
+	multiple IP addresses or users need to have their limiters
+	removed at once.
+	"""
+	async with _limiters_lock:
+		for key in limiter_keys:
+			if key in _limiters:
+				del _limiters[key]

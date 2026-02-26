@@ -6,6 +6,10 @@ of global components.
 
 from os import getenv
 
+from api.lifecycle.maintenance import (
+	start_maintenance_tasks,
+	stop_maintenance_tasks,
+)
 from api.lifecycle.websocket_registry import (
 	start_websocket_registry,
 	stop_websocket_registry,
@@ -43,16 +47,19 @@ async def startup() -> None:
 	await start_mongodb_client()
 	start_qdrant_client()
 	await start_security_system()
+	start_maintenance_tasks()
 
 
 async def shutdown() -> None:
 	"""Shuts down all components gracefully."""
+	await stop_maintenance_tasks()
 	await stop_websocket_registry()
 	await stop_event_system()
 	await close_openai_client()
 	await close_mongodb_client()
 	await close_qdrant_client()
 	await stop_security_system()
+	await stop_maintenance_tasks()
 
 
 # --- Environment loading ---

@@ -77,10 +77,10 @@ class TokenObserver:
 		)
 		# Used for cleanup
 		self._cleanup_interval_seconds = 60  # 1 minute
-		self._rt_persistence_time_s = (
+		self._rt_retention_time_s = (
 			7 * 24 * 60 * 60
 		)  # 7 days in seconds
-		self._at_persistence_time_s = 30 * 60  # 30 minutes
+		self._at_retention_time_s = 30 * 60  # 30 minutes
 		self._deletion_batch_size = 500
 		self._cleanup_task: asyncio.Task | None = None
 
@@ -993,7 +993,7 @@ class TokenObserver:
 			self._blocked_tokens.pop(token_id, None)
 
 	async def _rt_cleanup(self):
-		cutoff_time = get_timestamp_s() - self._rt_persistence_time_s
+		cutoff_time = get_timestamp_s() - self._rt_retention_time_s
 		rt_ids_to_cleanup = []
 
 		async with self._lock:
@@ -1001,6 +1001,7 @@ class TokenObserver:
 				if (
 					stats.last_api_request_at
 					and stats.last_api_request_at < cutoff_time
+					and token_id not in self._blocked_tokens
 				):
 					rt_ids_to_cleanup.append(token_id)
 
@@ -1015,7 +1016,7 @@ class TokenObserver:
 			)
 
 	async def _at_cleanup(self):
-		cutoff_time = get_timestamp_s() - self._at_persistence_time_s
+		cutoff_time = get_timestamp_s() - self._at_retention_time_s
 		at_ids_to_cleanup = []
 
 		async with self._lock:
@@ -1023,6 +1024,7 @@ class TokenObserver:
 				if (
 					stats.last_api_request_at
 					and stats.last_api_request_at < cutoff_time
+					and token_id not in self._blocked_tokens
 				):
 					at_ids_to_cleanup.append(token_id)
 
