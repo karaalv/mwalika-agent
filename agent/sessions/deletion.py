@@ -11,12 +11,8 @@ async def delete_agent_session(session_id: str) -> None:
 	"""
 	Deletes an agent session and all associated data.
 	"""
-	session_collection = await get_collection(
-		MongoDBCollection.SESSIONS
-	)
-	memory_collection = await get_collection(
-		MongoDBCollection.MEMORIES
-	)
+	session_collection = get_collection(MongoDBCollection.SESSIONS)
+	memory_collection = get_collection(MongoDBCollection.MEMORIES)
 	# Delete the session document
 	await session_collection.delete_one({'session_id': session_id})
 	# Delete all memory entries associated with the session

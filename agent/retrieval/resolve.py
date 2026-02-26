@@ -52,7 +52,7 @@ async def resolve_and_format_corpus_payload(
 			),
 		)
 
-	collection = await get_collection(collection_name)
+	collection = get_collection(collection_name)
 
 	# Convert the MongoDB document to the appropriate schema entry
 	if payload.type == CorpusItemType.MINISTRY:

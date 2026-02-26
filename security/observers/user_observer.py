@@ -146,7 +146,7 @@ class UserObserver:
 		were active before a restart.
 		"""
 		try:
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			cursor = blocked_entities_collection.find(
@@ -195,7 +195,7 @@ class UserObserver:
 			self._users_to_update.clear()
 
 		try:
-			usage_stats_collection = await get_collection(
+			usage_stats_collection = get_collection(
 				MongoDBCollection.USER_USAGE_STATS
 			)
 			# Prepare bulk update operations
@@ -325,7 +325,7 @@ class UserObserver:
 		"""
 		try:
 			# Push to database
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			await blocked_entities_collection.update_one(
@@ -357,7 +357,7 @@ class UserObserver:
 		response to data retention policies.
 		"""
 		try:
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			await blocked_entities_collection.delete_one(
@@ -999,7 +999,7 @@ class UserObserver:
 		"""
 		batch_size = self._deletion_batch_size
 		try:
-			usage_stats_collection = await get_collection(
+			usage_stats_collection = get_collection(
 				MongoDBCollection.USER_USAGE_STATS
 			)
 			for i in range(0, len(user_ids), batch_size):
@@ -1026,7 +1026,7 @@ class UserObserver:
 		"""
 		batch_size = self._deletion_batch_size
 		try:
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			for i in range(0, len(user_ids), batch_size):

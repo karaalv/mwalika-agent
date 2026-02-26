@@ -139,7 +139,7 @@ class IpObserver:
 		and populates the in-memory state for blocked IPs.
 		"""
 		try:
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			cursor = blocked_entities_collection.find(
@@ -186,7 +186,7 @@ class IpObserver:
 			self._ips_to_update.clear()
 
 		try:
-			ip_usage_collection = await get_collection(
+			ip_usage_collection = get_collection(
 				MongoDBCollection.IP_USAGE_STATS
 			)
 			bulk_ops = []
@@ -339,7 +339,7 @@ class IpObserver:
 		"""
 		try:
 			# Push to database
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			await blocked_entities_collection.update_one(
@@ -365,7 +365,7 @@ class IpObserver:
 		ensure that the IP is treated as unblocked in future checks.
 		"""
 		try:
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			await blocked_entities_collection.delete_one(
@@ -1003,7 +1003,7 @@ class IpObserver:
 		"""
 		batch_size = self._deletion_batch_size
 		try:
-			ip_usage_collection = await get_collection(
+			ip_usage_collection = get_collection(
 				MongoDBCollection.IP_USAGE_STATS
 			)
 			for i in range(0, len(ip_addresses), batch_size):
@@ -1031,7 +1031,7 @@ class IpObserver:
 		"""
 		batch_size = self._deletion_batch_size
 		try:
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			for i in range(0, len(ip_addresses), batch_size):

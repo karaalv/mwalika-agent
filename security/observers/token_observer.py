@@ -135,7 +135,7 @@ class TokenObserver:
 		across multiple instances of the system.
 		"""
 		try:
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			cursor = blocked_entities_collection.find(
@@ -390,7 +390,7 @@ class TokenObserver:
 		of the system.
 		"""
 		try:
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			await blocked_entities_collection.update_one(
@@ -419,7 +419,7 @@ class TokenObserver:
 		of the system.
 		"""
 		try:
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			await blocked_entities_collection.delete_one(
@@ -943,7 +943,7 @@ class TokenObserver:
 		)
 		batch_size = self._deletion_batch_size
 		try:
-			blocked_entities_collection = await get_collection(
+			blocked_entities_collection = get_collection(
 				MongoDBCollection.BLOCKED_ENTITIES
 			)
 			for i in range(0, len(token_ids), batch_size):

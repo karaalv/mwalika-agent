@@ -18,7 +18,7 @@ from schemas.corpus.services import ServiceEntry
 
 
 async def _get_ministry_entry(entity_id: str) -> MinistryEntry | None:
-	collection = await get_collection(MongoDBCollection.MINISTRIES)
+	collection = get_collection(MongoDBCollection.MINISTRIES)
 	document = await collection.find_one(
 		{'ministry_id': entity_id}, {'_id': 0}
 	)
@@ -30,7 +30,7 @@ async def _get_ministry_entry(entity_id: str) -> MinistryEntry | None:
 async def _get_department_entry(
 	entity_id: str,
 ) -> DepartmentEntry | None:
-	collection = await get_collection(MongoDBCollection.DEPARTMENTS)
+	collection = get_collection(MongoDBCollection.DEPARTMENTS)
 	document = await collection.find_one(
 		{'department_id': entity_id}, {'_id': 0}
 	)
@@ -40,7 +40,7 @@ async def _get_department_entry(
 
 
 async def _get_agency_entry(entity_id: str) -> AgencyEntry | None:
-	collection = await get_collection(MongoDBCollection.AGENCIES)
+	collection = get_collection(MongoDBCollection.AGENCIES)
 	document = await collection.find_one(
 		{'agency_id': entity_id}, {'_id': 0}
 	)

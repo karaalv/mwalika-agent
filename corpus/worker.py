@@ -455,7 +455,7 @@ class CorpusWorker:
 			'Pushing ministries to MongoDB...',
 			style=LogStyle.INFO,
 		)
-		ministry_collection = await get_collection(
+		ministry_collection = get_collection(
 			MongoDBCollection.MINISTRIES
 		)
 		ministries = [
@@ -476,7 +476,7 @@ class CorpusWorker:
 			'Pushing departments to MongoDB...',
 			style=LogStyle.INFO,
 		)
-		department_collection = await get_collection(
+		department_collection = get_collection(
 			MongoDBCollection.DEPARTMENTS
 		)
 		departments = [
@@ -497,9 +497,7 @@ class CorpusWorker:
 			'Pushing agencies to MongoDB...',
 			style=LogStyle.INFO,
 		)
-		agency_collection = await get_collection(
-			MongoDBCollection.AGENCIES
-		)
+		agency_collection = get_collection(MongoDBCollection.AGENCIES)
 		agencies = [
 			agency.model_dump() for agency in self.agencies.values()
 		]
@@ -517,7 +515,7 @@ class CorpusWorker:
 			'Pushing services to MongoDB...',
 			style=LogStyle.INFO,
 		)
-		service_collection = await get_collection(
+		service_collection = get_collection(
 			MongoDBCollection.SERVICES
 		)
 		services = [

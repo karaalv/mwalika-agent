@@ -73,7 +73,7 @@ _collection_map: dict[MongoDBCollection, MongoDBDatabase] = {
 # --- Collection Access ---
 
 
-async def get_collection(
+def get_collection(
 	collection: MongoDBCollection,
 ) -> AsyncCollection:
 	"""

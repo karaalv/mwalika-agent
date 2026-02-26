@@ -5,6 +5,16 @@ usage statistics and other relevant user data when they interact
 with the system.
 """
 
+from databases.mongodb.main import MongoDBCollection, get_collection
+from shared.time import get_timestamp
 
-# TODO: Function for updating user last active timestamp, language
-# preference, and other relevant data
+
+async def update_user_last_active(user_id: str) -> None:
+	"""
+	Update the last active timestamp for a given user.
+	"""
+	users_collection = get_collection(MongoDBCollection.USERS)
+	await users_collection.update_one(
+		{'user_id': user_id},
+		{'$set': {'last_active_at': get_timestamp()}},
+	)

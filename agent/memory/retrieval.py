@@ -20,9 +20,7 @@ async def retrieve_agent_memory(
 	Retrieves relevant memory entries for a given
 	agent session and user, ordered by most recent.
 	"""
-	memory_collection = await get_collection(
-		MongoDBCollection.MEMORIES
-	)
+	memory_collection = get_collection(MongoDBCollection.MEMORIES)
 	memory_entries = await memory_collection.find(
 		{
 			'session_id': session_id,

@@ -13,7 +13,7 @@ async def get_faq_list() -> list[FAQEntry]:
 	"""
 	Retrieves the list of FAQs from the MongoDB collection.
 	"""
-	faq_collection = await get_collection(MongoDBCollection.FAQS)
+	faq_collection = get_collection(MongoDBCollection.FAQS)
 	faqs = await faq_collection.find().to_list()
 	return [FAQEntry.model_validate(faq) for faq in faqs]
 

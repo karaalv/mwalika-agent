@@ -20,7 +20,7 @@ async def clear_collection(collection: MongoDBCollection) -> None:
 	Clears all documents from the specified
 	MongoDB collection.
 	"""
-	coll = await get_collection(collection)
+	coll = get_collection(collection)
 	await coll.delete_many({})
 
 

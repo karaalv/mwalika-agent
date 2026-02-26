@@ -35,6 +35,7 @@ from schemas.api.responses import (
 )
 from shared.ids import generate_uuid_str
 from shared.logging import LogStyle, cprint
+from users.service.update import update_user_last_active
 from utils.decorators.exceptions import guard
 
 # --- Constants ---
@@ -331,5 +332,6 @@ async def agent_chat(
 
 	# Update session last active timestamp, etc.
 	await update_session_last_active(session_id=session_id)
+	await update_user_last_active(user_id=user_id)
 
 	state.clear_state()

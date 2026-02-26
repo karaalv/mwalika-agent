@@ -20,9 +20,7 @@ async def create_agent_session(
 	Creates a new agent session in the database and returns
 	the session metadata.
 	"""
-	sessions_collection = await get_collection(
-		MongoDBCollection.SESSIONS
-	)
+	sessions_collection = get_collection(MongoDBCollection.SESSIONS)
 	new_session = AgentSession(
 		session_id=generate_uuid_str(),
 		user_id=user_id,

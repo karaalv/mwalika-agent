@@ -20,7 +20,7 @@ async def create_anonymous_user(user_id: str) -> AnonymousUser:
 	# Insert the anonymous user into the
 	# database, note that usage stats will be
 	# created on demand via the user observer
-	users_collection = await get_collection(MongoDBCollection.USERS)
+	users_collection = get_collection(MongoDBCollection.USERS)
 	await users_collection.insert_one(
 		anonymous_user.model_dump(mode='json')
 	)

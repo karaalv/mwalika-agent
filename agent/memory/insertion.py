@@ -22,9 +22,7 @@ async def insert_agent_memory(
 	Inserts a new memory entry into the MongoDB collection
 	for the given session and user.
 	"""
-	memory_collection = await get_collection(
-		MongoDBCollection.MEMORIES
-	)
+	memory_collection = get_collection(MongoDBCollection.MEMORIES)
 	await memory_collection.insert_one(
 		memory_entry.model_dump(mode='json')
 	)
@@ -48,9 +46,7 @@ async def insert_agent_memory_content(
 		sender=sender,
 		content=content,
 	)
-	memory_collection = await get_collection(
-		MongoDBCollection.MEMORIES
-	)
+	memory_collection = get_collection(MongoDBCollection.MEMORIES)
 	await memory_collection.insert_one(
 		memory_entry.model_dump(mode='json')
 	)
