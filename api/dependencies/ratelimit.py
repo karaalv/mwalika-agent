@@ -12,13 +12,19 @@ from typing import Any
 from fastapi import Depends, Request, WebSocket
 
 from api.dependencies.auth import (
-	verify_access_header,
-	verify_frontend_header,
-	verify_refresh_token,
+	require_access_header,
+	require_frontend_header,
+	require_refresh_token,
+	ws_require_access_token,
+)
+from api.dependencies.timeouts import (
+	timeout_limiter_http,
+	timeout_limiter_ws,
+)
+from api.dependencies.utils import (
+	check_ip_blocked,
 )
 from api.utils.ip_addresses import get_http_ip, get_ws_ip
-from api.websocket.utils import send_websocket_error_directly
-from authorisation.jwt.verify import verify_token
 from security.ratelimit.policies import ResourcePolicyType
 from security.ratelimit.store import get_limiter
 
@@ -38,8 +44,8 @@ def rate_limit_ip(
 	async def limiter_dependency(request: Request):
 		request_ip = get_http_ip(request)
 
-		# TODO: Check if IP is blocked and deal with that before
-		# attempting
+		# Check if the IP is blocked
+		await check_ip_blocked(request_ip)
 
 		limiter = get_limiter(
 			policy_type=policy_type,
@@ -49,7 +55,7 @@ def rate_limit_ip(
 
 		# Attempt to acquire a slot in the limiter,
 		# which will enforce the rate limit
-		async with limiter:
+		async with timeout_limiter_http(limiter):
 			return
 
 	return limiter_dependency
@@ -67,7 +73,7 @@ def require_frontend_and_rate_limit(
 
 	async def limiter_dependency(
 		request: Request,
-		payload: dict[str, Any] = Depends(verify_frontend_header),  # noqa: B008
+		payload: dict[str, Any] = Depends(require_frontend_header),  # noqa: B008
 	):
 		request_ip = get_http_ip(request)
 
@@ -79,7 +85,7 @@ def require_frontend_and_rate_limit(
 
 		# Attempt to acquire a slot in the limiter,
 		# which will enforce the rate limit
-		async with limiter:
+		async with timeout_limiter_http(limiter):
 			return
 
 	return limiter_dependency
@@ -99,7 +105,7 @@ def require_refresh_and_rate_limit(
 
 	async def limiter_dependency(
 		request: Request,
-		payload: dict[str, Any] = Depends(verify_refresh_token),  # noqa: B008
+		payload: dict[str, Any] = Depends(require_refresh_token),  # noqa: B008
 	):
 		# Attempt to get user ID from verified refresh token payload
 		user_id = payload.get('sub', '')
@@ -120,12 +126,12 @@ def require_refresh_and_rate_limit(
 			)
 			# If user ID is available,
 			# apply both user and IP limiters
-			async with user_limiter:
-				async with ip_limiter:
+			async with timeout_limiter_http(ip_limiter):
+				async with timeout_limiter_http(user_limiter):
 					return user_id
 
 		# If no user ID, apply only IP limiter
-		async with ip_limiter:
+		async with timeout_limiter_http(ip_limiter):
 			return ''
 
 	return limiter_dependency
@@ -145,7 +151,7 @@ def require_access_and_rate_limit(
 
 	async def limiter_dependency(
 		request: Request,
-		payload: dict[str, Any] = Depends(verify_access_header),  # noqa: B008
+		payload: dict[str, Any] = Depends(require_access_header),  # noqa: B008
 	):
 		# Attempt to get user ID from verified access token payload
 		user_id = payload.get('sub', '')
@@ -166,13 +172,13 @@ def require_access_and_rate_limit(
 			)
 			# If user ID is available,
 			# apply both user and IP limiters
-			async with user_limiter:
-				async with ip_limiter:
-					return user_id
+			async with timeout_limiter_http(ip_limiter):
+				async with timeout_limiter_http(user_limiter):
+					return payload
 
 		# If no user ID, apply only IP limiter
-		async with ip_limiter:
-			return ''
+		async with timeout_limiter_http(ip_limiter):
+			return payload
 
 	return limiter_dependency
 
@@ -191,46 +197,10 @@ def ws_require_access_and_rate_limit(
 
 	async def limiter_dependency(
 		websocket: WebSocket,
+		payload: dict[str, Any] = Depends(ws_require_access_token),  # noqa: B008
 	):
-		# Attempt to get user ID from verified access token payload
 		request_ip = get_ws_ip(websocket)
-
-		access_token = websocket.query_params.get('access_token')
-		if not access_token:
-			# If no access token is provided,
-			# connect to send error message and
-			# close the connection
-			await websocket.accept()
-			await send_websocket_error_directly(
-				websocket=websocket,
-				error_message='Access token missing',
-				request_id='',
-				connection_id='',
-			)
-			await websocket.close(code=1008)
-			return
-
-		# Verify the access token and extract
-		# the user ID
-		try:
-			payload = verify_token(
-				token=access_token,
-				issuer='mwalika-agent',
-				typ='access',
-			)
-			user_id: str = payload.get('sub', '')
-		except Exception:
-			# If token verification fails,
-			# send error message and close connection
-			await websocket.accept()
-			await send_websocket_error_directly(
-				websocket=websocket,
-				error_message='Invalid access token',
-				request_id='',
-				connection_id='',
-			)
-			await websocket.close(code=1008)
-			return
+		user_id = payload.get('sub', '')
 
 		# Get limiters for both user ID and IP address
 		ip_limiter = get_limiter(
@@ -240,7 +210,6 @@ def ws_require_access_and_rate_limit(
 		)
 
 		if user_id:
-			# TODO: Check if user is blocked and deal with that
 			user_limiter = get_limiter(
 				policy_type=policy_type,
 				identifier_type='user',
@@ -248,13 +217,14 @@ def ws_require_access_and_rate_limit(
 			)
 			# If user ID is available,
 			# apply both user and IP limiters
-			async with user_limiter:
-				async with ip_limiter:
-					return user_id
+			async with timeout_limiter_ws(ip_limiter, websocket):
+				async with timeout_limiter_ws(
+					user_limiter, websocket
+				):
+					return payload
 
-		# TODO: Check if IP is blocked and deal with that
 		# If no user ID, apply only IP limiter
-		async with ip_limiter:
-			return ''
+		async with timeout_limiter_ws(ip_limiter, websocket):
+			return payload
 
 	return limiter_dependency

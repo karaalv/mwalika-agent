@@ -26,6 +26,10 @@ from openai_client.config import (
 	close_openai_client,
 	start_openai_client,
 )
+from security.lifecycle import (
+	start_security_system,
+	stop_security_system,
+)
 
 # --- Lifecycle management utilities ---
 
@@ -38,6 +42,7 @@ async def startup() -> None:
 	start_openai_client()
 	await start_mongodb_client()
 	start_qdrant_client()
+	await start_security_system()
 
 
 async def shutdown() -> None:
@@ -47,6 +52,7 @@ async def shutdown() -> None:
 	await close_openai_client()
 	await close_mongodb_client()
 	await close_qdrant_client()
+	await stop_security_system()
 
 
 # --- Environment loading ---

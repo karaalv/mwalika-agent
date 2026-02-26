@@ -19,6 +19,10 @@ POLICY_LIMITER_CONFIG_MAPPING: dict[
 		'ip': PolicyConfig(max_rate=500, time_period=60),
 		'user': PolicyConfig(max_rate=100, time_period=60),
 	},
+	ResourcePolicyType.API_DEPENDENCY: {
+		'ip': PolicyConfig(max_rate=300, time_period=60),
+		'user': PolicyConfig(max_rate=50, time_period=60),
+	},
 	ResourcePolicyType.REFRESH_TOKEN: {
 		'ip': PolicyConfig(max_rate=300, time_period=60),
 		'user': PolicyConfig(max_rate=10, time_period=60),

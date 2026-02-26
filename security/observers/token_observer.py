@@ -163,6 +163,7 @@ class TokenObserver:
 				cause=e,
 				level=BreadcrumbLevel.ERROR,
 			)
+			raise e
 
 	# --- Database push management ---
 
@@ -612,13 +613,15 @@ class TokenObserver:
 	async def update_latest_rt_usage(
 		self,
 		token_id: str,
-	) -> None:
+	) -> BlockedEntity | None:
 		"""
 		Updates the latest usage information for a refresh token,
 		which can be used for enforcing rate limits and tracking usage
 		patterns for security monitoring and analytics purposes.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_token_if_new_day(
@@ -666,24 +669,29 @@ class TokenObserver:
 				)
 			if rl_block_task and not req_block_task:
 				db_write_back_tasks.append(rl_block_task)
+				block = rl_block_task.blocked_entity
 			elif req_block_task:
 				db_write_back_tasks.append(req_block_task)
+				block = req_block_task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
 	# --- Access token specific management ---
 
 	async def update_latest_at_usage(
 		self,
 		token_id: str,
-	) -> None:
+	) -> BlockedEntity | None:
 		"""
 		Updates the latest usage information for an access token,
 		which can be used for enforcing rate limits and tracking usage
 		patterns for security monitoring and analytics purposes.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_token_if_new_day(
@@ -726,22 +734,27 @@ class TokenObserver:
 				)
 			if rl_block_task and not req_block_task:
 				db_write_back_tasks.append(rl_block_task)
+				block = rl_block_task.blocked_entity
 			elif req_block_task:
 				db_write_back_tasks.append(req_block_task)
+				block = req_block_task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
 	async def add_at_bad_request(
 		self,
 		token_id: str,
-	) -> None:
+	) -> BlockedEntity | None:
 		"""
 		Increments the bad request count for an access token, which
 		can be used for enforcing rate limits and tracking usage
 		patterns for security monitoring and analytics purposes.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_token_if_new_day(
@@ -778,14 +791,16 @@ class TokenObserver:
 					duration_seconds=ACCESS_TOKEN_BLOCK_DURATION,
 				)
 				db_write_back_tasks.append(req_block_task)
+				block = req_block_task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
-	async def add_at_claim_cookie_generated(
+	async def add_at_claim_cookie_generation(
 		self,
 		token_id: str,
-	) -> None:
+	) -> BlockedEntity | None:
 		"""
 		Increments the claim cookie generated count for an access,
 		token, which can be used for enforcing rate limits and
@@ -793,6 +808,8 @@ class TokenObserver:
 		purposes.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_token_if_new_day(
@@ -829,21 +846,25 @@ class TokenObserver:
 					duration_seconds=ACCESS_TOKEN_BLOCK_DURATION,
 				)
 				db_write_back_tasks.append(task)
+				block = task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
 	async def add_at_agent_input_tokens(
 		self,
 		token_id: str,
 		token_count: int,
-	) -> None:
+	) -> BlockedEntity | None:
 		"""
 		Increments the agent input token count for an access token,
 		which can be used for enforcing rate limits and tracking
 		usage patterns for security monitoring and analytics purposes.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_token_if_new_day(
@@ -894,11 +915,14 @@ class TokenObserver:
 				)
 			if rl_block_task and not req_block_task:
 				db_write_back_tasks.append(rl_block_task)
+				block = rl_block_task.blocked_entity
 			elif req_block_task:
 				db_write_back_tasks.append(req_block_task)
+				block = req_block_task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
 	# --- Cleanup and maintenance methods ---
 

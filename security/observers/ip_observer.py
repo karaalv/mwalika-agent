@@ -14,7 +14,7 @@ from observability.sentry.helpers import (
 	BreadcrumbLevel,
 	add_breadcrumb_capture_exception,
 )
-from schemas.security.ips import IPUsageStats
+from schemas.security.ips import IpUsageStats
 from schemas.security.observers import (
 	BlockedEntity,
 	BlockedEntityType,
@@ -54,7 +54,7 @@ class IpObserver:
 
 	def __init__(self):
 		# Main state for tracking IP usage
-		self._ip_usage_stats: dict[str, IPUsageStats] = {}
+		self._ip_usage_stats: dict[str, IpUsageStats] = {}
 		self._blocked_ips: dict[str, BlockedEntity] = {}
 		self._rate_limit_tracker: dict[str, MinuteCounter] = {}
 		# Lock to ensure thread-safe access to shared state
@@ -157,6 +157,7 @@ class IpObserver:
 				cause=e,
 				level=BreadcrumbLevel.ERROR,
 			)
+			raise e
 
 	# --- Database push management ---
 
@@ -413,7 +414,7 @@ class IpObserver:
 		"""
 		prev_block_count = self._get_ip_block_count(ip_address)
 		if ip_address not in self._ip_usage_stats:
-			self._ip_usage_stats[ip_address] = IPUsageStats(
+			self._ip_usage_stats[ip_address] = IpUsageStats(
 				ip_address=ip_address,
 				day_key=get_utc_day_key(),
 			)
@@ -619,12 +620,16 @@ class IpObserver:
 				duration_seconds=duration,
 			)
 
-	async def update_latest_request(self, ip_address: str):
+	async def update_latest_request(
+		self, ip_address: str
+	) -> BlockedEntity | None:
 		"""
 		Updates the timestamp of the ip address's latest
 		request and increments the daily request count.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_ip_if_new_day(ip_address)
@@ -633,7 +638,7 @@ class IpObserver:
 
 			# Update stats
 			if ip_address not in self._ip_usage_stats:
-				self._ip_usage_stats[ip_address] = IPUsageStats(
+				self._ip_usage_stats[ip_address] = IpUsageStats(
 					ip_address=ip_address,
 					day_key=get_utc_day_key(),
 				)
@@ -665,19 +670,26 @@ class IpObserver:
 
 			if rl_block_task and not req_block_task:
 				db_write_back_tasks.append(rl_block_task)
+				block = rl_block_task.blocked_entity
 			elif req_block_task:
 				db_write_back_tasks.append(req_block_task)
+				block = req_block_task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
-	async def add_bad_request(self, ip_address: str):
+	async def add_bad_request(
+		self, ip_address: str
+	) -> BlockedEntity | None:
 		"""
 		Increments the count of bad requests for the given IP address
 		and blocks the IP if it exceeds the defined threshold for bad
 		requests.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_ip_if_new_day(ip_address)
@@ -686,7 +698,7 @@ class IpObserver:
 
 			# Update stats
 			if ip_address not in self._ip_usage_stats:
-				self._ip_usage_stats[ip_address] = IPUsageStats(
+				self._ip_usage_stats[ip_address] = IpUsageStats(
 					ip_address=ip_address,
 					day_key=get_utc_day_key(),
 				)
@@ -712,13 +724,15 @@ class IpObserver:
 					duration_seconds=HOURS_IN_SECONDS_24,
 				)
 				db_write_back_tasks.append(task)
+				block = task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
 	async def add_ws_connection(
 		self, ip_address: str, connection_id: str
-	):
+	) -> BlockedEntity | None:
 		"""
 		Adds a WebSocket connection ID to the list of active
 		connections for the given IP address and blocks the IP
@@ -726,6 +740,8 @@ class IpObserver:
 		connections.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_ip_if_new_day(ip_address)
@@ -734,7 +750,7 @@ class IpObserver:
 
 			# Update stats
 			if ip_address not in self._ip_usage_stats:
-				self._ip_usage_stats[ip_address] = IPUsageStats(
+				self._ip_usage_stats[ip_address] = IpUsageStats(
 					ip_address=ip_address,
 					day_key=get_utc_day_key(),
 				)
@@ -765,9 +781,11 @@ class IpObserver:
 					duration_seconds=duration,
 				)
 				db_write_back_tasks.append(task)
+				block = task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
 	async def remove_ws_connection(
 		self, ip_address: str, connection_id: str
@@ -797,13 +815,15 @@ class IpObserver:
 
 	async def add_agent_input_tokens(
 		self, ip_address: str, token_count: int
-	):
+	) -> BlockedEntity | None:
 		"""
 		Increments the count of agent input tokens for the given IP
 		address and blocks the IP if it exceeds the defined threshold
 		for daily agent input tokens.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_ip_if_new_day(ip_address)
@@ -812,7 +832,7 @@ class IpObserver:
 
 			# Update stats
 			if ip_address not in self._ip_usage_stats:
-				self._ip_usage_stats[ip_address] = IPUsageStats(
+				self._ip_usage_stats[ip_address] = IpUsageStats(
 					ip_address=ip_address,
 					day_key=get_utc_day_key(),
 				)
@@ -852,19 +872,26 @@ class IpObserver:
 
 			if rl_block_task and not req_block_task:
 				db_write_back_tasks.append(rl_block_task)
+				block = rl_block_task.blocked_entity
 			elif req_block_task:
 				db_write_back_tasks.append(req_block_task)
+				block = req_block_task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
-	async def add_rt_generation(self, ip_address: str):
+	async def add_rt_generation(
+		self, ip_address: str
+	) -> BlockedEntity | None:
 		"""
 		Increments the count of refresh token generations for the
 		given IP address and blocks the IP if it exceeds the defined
 		threshold for daily refresh token generations.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_ip_if_new_day(ip_address)
@@ -873,7 +900,7 @@ class IpObserver:
 
 			# Update stats
 			if ip_address not in self._ip_usage_stats:
-				self._ip_usage_stats[ip_address] = IPUsageStats(
+				self._ip_usage_stats[ip_address] = IpUsageStats(
 					ip_address=ip_address,
 					day_key=get_utc_day_key(),
 				)
@@ -904,17 +931,23 @@ class IpObserver:
 					duration_seconds=duration,
 				)
 				db_write_back_tasks.append(task)
+				block = task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
-	async def add_claim_cookie_generation(self, ip_address: str):
+	async def add_claim_cookie_generation(
+		self, ip_address: str
+	) -> BlockedEntity | None:
 		"""
 		Increments the count of claim cookie generations for the given
 		IP address and blocks the IP if it exceeds the defined
 		threshold for daily claim cookie generations.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_ip_if_new_day(ip_address)
@@ -923,7 +956,7 @@ class IpObserver:
 
 			# Update stats
 			if ip_address not in self._ip_usage_stats:
-				self._ip_usage_stats[ip_address] = IPUsageStats(
+				self._ip_usage_stats[ip_address] = IpUsageStats(
 					ip_address=ip_address,
 					day_key=get_utc_day_key(),
 				)
@@ -954,9 +987,11 @@ class IpObserver:
 					duration_seconds=duration,
 				)
 				db_write_back_tasks.append(task)
+				block = task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
 	# --- Cleanup and maintenance methods ---
 

@@ -9,7 +9,7 @@ analytics, and enforcing security policies related to IP addresses.
 from pydantic import BaseModel, Field
 
 
-class IPUsageStats(BaseModel):
+class IpUsageStats(BaseModel):
 	"""
 	Represents usage statistics for an IP address in the
 	Mwalika Agent system, which can be used for

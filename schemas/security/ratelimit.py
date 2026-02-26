@@ -26,6 +26,7 @@ class ResourcePolicyType(str, Enum):
 	"""
 
 	SYSTEM = 'system'
+	API_DEPENDENCY = 'api_dependency'
 	REFRESH_TOKEN = 'refresh_token'
 	ACCESS_TOKEN = 'access_token'
 	CLAIM_USER_COOKIE = 'claim_user_cookie'

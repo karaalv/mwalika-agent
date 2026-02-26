@@ -4,6 +4,8 @@ this includes user information retrieval,
 and other user management functionalities.
 """
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, Request
 
 from api.config.settings import (
@@ -17,6 +19,12 @@ from api.dependencies.ratelimit import (
 	require_frontend_and_rate_limit,
 	require_refresh_and_rate_limit,
 )
+from api.guards.users.routes import (
+	guard_at_generation,
+	guard_claim_cookie_generation,
+	guard_rt_generation,
+)
+from api.utils.ip_addresses import get_http_ip
 from api.utils.responses import http_response
 from authorisation.jwt.create import create_token
 from authorisation.jwt.verify import verify_token
@@ -48,6 +56,11 @@ async def get_refresh_token(
 	create a new user once a message is sent.
 	"""
 	request_id = getattr(request.state, 'request_id', '')
+	ip = get_http_ip(request)
+
+	# Guard the issuance of the refresh token
+	await guard_rt_generation(ip_address=ip)
+
 	# Create a general refresh token with no specific user ID
 	token = create_token(
 		sub='',
@@ -61,7 +74,6 @@ async def get_refresh_token(
 		message='General refresh token generated successfully',
 	)
 
-	# TODO: Track token usage
 	response.set_cookie(
 		key='mwalika_rt',
 		value=token,
@@ -92,29 +104,10 @@ async def get_access_token(
 	but will not be associated with a user until a message is sent.
 	"""
 	request_id = getattr(request.state, 'request_id', '')
-	mwalika_rt = request.cookies.get('mwalika_rt')
-	if not mwalika_rt:
-		return http_response(
-			request_id=request_id,
-			success=False,
-			message='No refresh token found in cookies',
-			status_code=401,
-		)
 
-	# Verify the refresh token before issuing an access token
-	try:
-		verify_token(
-			token=mwalika_rt,
-			issuer='mwalika-agent',
-			typ='refresh',
-		)
-	except Exception as e:
-		return http_response(
-			request_id=request_id,
-			success=False,
-			message=f'Invalid refresh token: {str(e)}',
-			status_code=401,
-		)
+	# Guard the issuance of the access token
+	if user_id:
+		await guard_at_generation(user_id=user_id)
 
 	# Create access token and scope to user if
 	# user id is in cookie
@@ -124,7 +117,6 @@ async def get_access_token(
 		typ='access',
 		ttl_seconds=ACCESS_TOKEN_EXPIRY_SECONDS,
 	)
-	# TODO: Track token usage with user id
 	return http_response(
 		request_id=request_id,
 		success=True,
@@ -138,8 +130,8 @@ async def get_access_token(
 )
 async def claim_cookie(
 	request: Request,
-	user_id: str = Depends(
-		require_access_and_rate_limit(
+	payload: dict[str, Any] = Depends(  # noqa: B008
+		require_access_and_rate_limit(  # noqa: B008
 			ResourcePolicyType.CLAIM_USER_COOKIE
 		)
 	),
@@ -166,6 +158,17 @@ async def claim_cookie(
 
 	# Verify the claim token and ensure it
 	# matches the provided user_id
+	user_id = payload.get('sub', '')
+	token_id = payload.get('jti')
+
+	if not user_id or not token_id:
+		return http_response(
+			request_id=request_id,
+			success=False,
+			message='Invalid token payload: missing sub or jti claim',
+			status_code=401,
+		)
+
 	try:
 		payload = verify_token(
 			token=claim_token,
@@ -184,9 +187,16 @@ async def claim_cookie(
 			status_code=401,
 		)
 
-	# If the token is valid, set the user ID in the cookies
+	# Guard the claiming of the user ID cookie
+	await guard_claim_cookie_generation(
+		ip_address=get_http_ip(request),
+		user_id=user_id,
+		token_id=token_id,
+	)
 
-	# TODO: Begin tracking tokens for user
+	# If the token is valid, set the
+	# user ID in the cookies
+
 	response = http_response(
 		request_id=request_id,
 		success=True,

@@ -212,6 +212,8 @@ interface UserUsageStats {
     active_ws_connections: string[]; // List of active WebSocket connection IDs
     bad_requests_today: number; // Requests that triggered security rules
     last_api_request_at: number | null; // Seconds since epoch
+    access_tokens_generated_today: number; // Number of access tokens generated today
+    claim_cookies_generated_today: number; // Number of claim cookies generated today
 }
 ```
 
@@ -220,7 +222,7 @@ interface UserUsageStats {
 Stores usage statistics for each IP address.
 
 ```typescript
-interface IPUsageStats {
+interface IpUsageStats {
     ip_address: string;
     day_key: string; // e.g. '2024-06-01'
     blocked_count: number;
@@ -230,6 +232,8 @@ interface IPUsageStats {
     active_ws_connections: string[]; // List of active WebSocket connection IDs
     bad_requests_today: number; // Requests that triggered security rules
     last_api_request_at: number | null; // Seconds since epoch
+    refresh_tokens_generated_today: number; // Number of refresh tokens generated today
+    claim_cookies_generated_today: number; // Number of claim cookies generated today
 }
 ```
 

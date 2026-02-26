@@ -164,6 +164,7 @@ class UserObserver:
 				cause=e,
 				level=BreadcrumbLevel.ERROR,
 			)
+			raise e
 
 	# --- Database push management ---
 
@@ -638,12 +639,16 @@ class UserObserver:
 				duration_seconds=duration,
 			)
 
-	async def update_latest_request(self, user_id: str) -> None:
+	async def update_latest_request(
+		self, user_id: str
+	) -> BlockedEntity | None:
 		"""
 		Updates the timestamp of the user's latest request
 		and increments their request count for today.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_user_if_new_day(user_id)
@@ -681,18 +686,25 @@ class UserObserver:
 				)
 			if rl_block_task and not req_block_task:
 				db_write_back_tasks.append(rl_block_task)
+				block = rl_block_task.blocked_entity
 			elif req_block_task:
 				db_write_back_tasks.append(req_block_task)
+				block = req_block_task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
-	async def add_bad_request(self, user_id: str) -> None:
+	async def add_bad_request(
+		self, user_id: str
+	) -> BlockedEntity | None:
 		"""
 		Increments the count of bad requests made by the user today,
 		which can be used to identify potentially malicious behavior.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_user_if_new_day(user_id)
@@ -724,19 +736,23 @@ class UserObserver:
 					duration_seconds=HOURS_IN_SECONDS_24,
 				)
 				db_write_back_tasks.append(task)
+				block = task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
 	async def add_ws_connection(
 		self, user_id: str, connection_id: str
-	) -> None:
+	) -> BlockedEntity | None:
 		"""
 		Adds an active WebSocket connection ID to the user's stats,
 		which can be used to manage real-time interactions and enforce
 		limits on concurrent connections.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_user_if_new_day(user_id)
@@ -773,9 +789,11 @@ class UserObserver:
 					duration_seconds=duration,
 				)
 				db_write_back_tasks.append(task)
+				block = task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
 	async def remove_ws_connection(
 		self, user_id: str, connection_id: str
@@ -804,13 +822,15 @@ class UserObserver:
 
 	async def add_agent_input_tokens(
 		self, user_id: str, token_count: int
-	) -> None:
+	) -> BlockedEntity | None:
 		"""
 		Increments the total number of input tokens sent to agents
 		by the user and updates the count for today, which can be
 		used to enforce token-based rate limits.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_user_if_new_day(user_id)
@@ -854,19 +874,26 @@ class UserObserver:
 
 			if rl_block_task and not req_block_task:
 				db_write_back_tasks.append(rl_block_task)
+				block = rl_block_task.blocked_entity
 			elif req_block_task:
 				db_write_back_tasks.append(req_block_task)
+				block = req_block_task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
-	async def add_at_generation(self, user_id: str):
+	async def add_at_generation(
+		self, user_id: str
+	) -> BlockedEntity | None:
 		"""
 		Increments the count of access token generations for the given
 		user and blocks the user if it exceeds the defined threshold
 		for daily access token generations.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_user_if_new_day(user_id)
@@ -902,17 +929,23 @@ class UserObserver:
 					duration_seconds=duration,
 				)
 				db_write_back_tasks.append(task)
+				block = task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
-	async def add_claim_cookie_generation(self, user_id: str):
+	async def add_claim_cookie_generation(
+		self, user_id: str
+	) -> BlockedEntity | None:
 		"""
 		Increments the count of claim cookie generations for the given
 		user and blocks the user if it exceeds the defined threshold
 		for daily claim cookie generations.
 		"""
 		db_write_back_tasks = []
+		block: BlockedEntity | None = None
+
 		async with self._lock:
 			# Perform resets
 			task = self._reset_and_unblock_user_if_new_day(user_id)
@@ -948,9 +981,11 @@ class UserObserver:
 					duration_seconds=duration,
 				)
 				db_write_back_tasks.append(task)
+				block = task.blocked_entity
 
 		# Place database write-back tasks in queue outside lock
 		await self._wait_for_db_task_queue(db_write_back_tasks)
+		return block
 
 	# --- Cleanup and maintenance methods ---
 

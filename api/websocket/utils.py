@@ -6,6 +6,7 @@ processing tasks related to WebSocket communication.
 """
 
 from fastapi import WebSocket
+from starlette.websockets import WebSocketState
 
 from events.lifecycle import publish_event
 from schemas.api.responses import (
@@ -61,6 +62,28 @@ async def send_websocket_error_directly(
 		message=error_message,
 	)
 	await websocket.send_json(error_response.model_dump(mode='json'))
+
+
+async def ws_send_error_and_close(
+	websocket: WebSocket,
+	error_message: str,
+	request_id: str,
+	connection_id: str,
+) -> None:
+	"""
+	Utility function to send an error message through the websocket
+	and then close the connection.
+	"""
+	if websocket.client_state != WebSocketState.CONNECTED:
+		await websocket.accept()
+	await send_websocket_error_directly(
+		websocket=websocket,
+		error_message=error_message,
+		request_id=request_id,
+		connection_id=connection_id,
+	)
+	if websocket.client_state == WebSocketState.CONNECTED:
+		await websocket.close(code=1008)
 
 
 async def publish_websocket_message_event(

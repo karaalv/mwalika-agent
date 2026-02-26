@@ -4,6 +4,8 @@ such as agent interactions, agent session management,
 and other agent-related functionalities.
 """
 
+from typing import Any
+
 from fastapi import (
 	APIRouter,
 	Depends,
@@ -15,14 +17,27 @@ from fastapi import (
 from agent.main import agent_chat
 from agent.memory.retrieval import retrieve_agent_memory
 from agent.sessions.deletion import delete_agent_session
+from api.config.settings import (
+	WS_MESSAGE_RATE_LIMIT_TIMEOUT_SECONDS,
+)
 from api.dependencies.ratelimit import (
 	require_access_and_rate_limit,
 	ws_require_access_and_rate_limit,
+)
+from api.dependencies.timeouts import (
+	timeout_limiter_ws,
+)
+from api.guards.agent.routes import (
+	guard_agent_websocket_connection,
+	guard_agent_websocket_data,
+	guard_agent_websocket_disconnection,
+	guard_agent_websocket_input_content,
 )
 from api.lifecycle.websocket_registry import (
 	add_websocket_connection,
 	remove_websocket_connection,
 )
+from api.utils.ip_addresses import get_ws_ip
 from api.utils.responses import (
 	create_websocket_response,
 	http_response,
@@ -38,15 +53,10 @@ from schemas.api.responses import (
 	WebSocketMessageType,
 )
 from schemas.events.core import EventType
-from security.config.agent import (
-	MAX_CONTENT_SIZE_BYTES,
-	MAX_INPUT_LENGTH,
-)
 from security.ratelimit.policies import (
 	ResourcePolicyType,
 )
 from security.ratelimit.store import get_limiter
-from shared.data import get_bytes
 from shared.ids import generate_uuid_str
 from users.service.creation import create_anonymous_user
 
@@ -63,8 +73,8 @@ agent_router = APIRouter()
 async def delete_session(
 	request: Request,
 	session_id: str,
-	user_id: str = Depends(
-		require_access_and_rate_limit(
+	payload: dict[str, Any] = Depends(  # noqa: B008
+		require_access_and_rate_limit(  # noqa: B008
 			ResourcePolicyType.AGENT_INTERACTION
 		)
 	),
@@ -75,9 +85,6 @@ async def delete_session(
 	"""
 	request_id = getattr(request.state, 'request_id', '')
 	await delete_agent_session(session_id)
-
-	# TODO: Increment user request count
-	# for usage stats
 
 	return http_response(
 		request_id=request_id,
@@ -90,8 +97,8 @@ async def delete_session(
 async def get_session_memory(
 	request: Request,
 	session_id: str,
-	user_id: str = Depends(
-		require_access_and_rate_limit(
+	payload: dict[str, Any] = Depends(  # noqa: B008
+		require_access_and_rate_limit(  # noqa: B008
 			ResourcePolicyType.AGENT_INTERACTION
 		)
 	),
@@ -101,12 +108,13 @@ async def get_session_memory(
 	associated with a specific agent session.
 	"""
 	request_id = getattr(request.state, 'request_id', '')
+	user_id = payload.get('sub', '')
 
 	if not user_id:
 		return http_response(
 			request_id=request_id,
 			success=False,
-			message='User ID not found in cookies',
+			message='User ID not found in token payload',
 			status_code=400,
 		)
 
@@ -114,8 +122,6 @@ async def get_session_memory(
 		session_id=session_id,
 		user_id=user_id,
 	)
-
-	# TODO: Increment user request count for usage stats
 
 	return http_response(
 		request_id=request_id,
@@ -136,8 +142,8 @@ async def get_session_memory(
 )
 async def agent_chat_websocket(
 	websocket: WebSocket,
-	user_id: str = Depends(
-		ws_require_access_and_rate_limit(
+	payload: dict[str, Any] = Depends(  # noqa: B008
+		ws_require_access_and_rate_limit(  # noqa: B008
 			ResourcePolicyType.AGENT_INTERACTION
 		)
 	),
@@ -151,7 +157,9 @@ async def agent_chat_websocket(
 	"""
 	# Dependency will have already verified access
 	# token and applied the interaction rate limit
-
+	ip_address = get_ws_ip(websocket)
+	user_id = payload.get('sub', '')
+	token_id = payload.get('jti', '')
 	session_id = websocket.query_params.get('session_id')
 	connection_id = generate_uuid_str()
 	user_exists = bool(user_id)
@@ -166,6 +174,16 @@ async def agent_chat_websocket(
 	# Start socket connection and
 	# add to registry
 	await websocket.accept()
+
+	# Guard the WebSocket connection for this
+	# user and IP address
+	await guard_agent_websocket_connection(
+		ip_address=ip_address,
+		user_id=user_id,
+		connection_id=connection_id,
+	)
+
+	# Only add connection to registry after passing guards
 	await add_websocket_connection(
 		user_id=user_id,
 		connection_id=connection_id,
@@ -174,20 +192,23 @@ async def agent_chat_websocket(
 
 	# Get rate limiter instances for this
 	# connection
-	user_limiter = get_limiter(
+	limiter = get_limiter(
 		policy_type=ResourcePolicyType.AGENT_MESSAGING,
 		identifier_type='user',
 		identifier_value=user_id,
 	)
+	timeout = WS_MESSAGE_RATE_LIMIT_TIMEOUT_SECONDS
+	timeout_limiter = timeout_limiter_ws(
+		limiter=limiter,
+		timeout_seconds=timeout,
+		websocket=websocket,
+	)
 
 	# Main loop to receive messages
-	# TODO: IF user gets blocked while connection is open, need to
-	# handle that case and close the connection or prevent further
-	# messages from being processed until block expires, etc.
 	try:
 		while True:
 			# Rate limit user messages
-			if not user_limiter.has_capacity:
+			if not limiter.has_capacity:
 				await publish_websocket_message_event(
 					user_id=user_id,
 					connection_id=connection_id,
@@ -199,27 +220,17 @@ async def agent_chat_websocket(
 				)
 				continue
 
-			async with user_limiter:
+			async with timeout_limiter:
 				data = await websocket.receive_json()
-				# Check content size to prevent abuse
-				if get_bytes(data) > MAX_CONTENT_SIZE_BYTES:
-					await publish_websocket_message_event(
-						user_id=user_id,
-						connection_id=connection_id,
-						message=(
-							'Message content too large. '
-							f'Max size is {MAX_CONTENT_SIZE_BYTES} '
-							'bytes.'
-						),
-						message_type=WebSocketMessageType.ERROR,
-					)
-					await remove_websocket_connection(
-						user_id=user_id,
-						connection_id=connection_id,
-						reason='Content size limit exceeded',
-						close_code=1009,
-					)
-					break
+
+				# Guard against excessively large messages
+				await guard_agent_websocket_data(
+					ip_address=ip_address,
+					token_id=token_id,
+					user_id=user_id,
+					connection_id=connection_id,
+					data=data,
+				)
 
 				# Process message based on type
 				ws_request = WebSocketRequest.model_validate(data)
@@ -228,13 +239,21 @@ async def agent_chat_websocket(
 				# so ignore here
 				if ws_request.type == WebSocketRequestType.HEARTBEAT:
 					continue
-				# If agent interaction message,
-				# process through agent_chat function
 				elif (
 					ws_request.type
 					== WebSocketRequestType.AGENT_INTERACTION
 				):
 					user_input = ws_request.payload.message
+
+					# Guard against excessively long input messages
+					await guard_agent_websocket_input_content(
+						ip_address=ip_address,
+						token_id=token_id,
+						user_id=user_id,
+						connection_id=connection_id,
+						user_input=user_input,
+					)
+
 					# create user if not exists, and send user ID
 					# to client for future interactions
 					if not user_exists:
@@ -244,19 +263,6 @@ async def agent_chat_websocket(
 						)
 						user_exists = True
 
-					# Enforce maximum input length
-					if len(user_input) > MAX_INPUT_LENGTH:
-						await publish_websocket_message_event(
-							user_id=user_id,
-							connection_id=connection_id,
-							message=(
-								f'Input exceeds maximum length of '
-								f'{MAX_INPUT_LENGTH} characters.'
-							),
-							message_type=WebSocketMessageType.WARNING,
-						)
-						continue
-
 					# Perform agent chat interaction,
 					# which will publish events
 					await agent_chat(
@@ -265,8 +271,6 @@ async def agent_chat_websocket(
 						user_input=user_input,
 						connection_id=connection_id,
 					)
-
-					# TODO: Increment usage stats for user, etc.
 				else:
 					# If unknown message type,
 					# ignore or log as needed
@@ -274,6 +278,14 @@ async def agent_chat_websocket(
 	except WebSocketDisconnect:
 		pass
 	finally:
+		# Guard the WebSocket disconnection - currently
+		# no real logic is implemented here, this removes
+		# the connection info from observers
+		await guard_agent_websocket_disconnection(
+			ip_address=ip_address,
+			user_id=user_id,
+			connection_id=connection_id,
+		)
 		await remove_websocket_connection(
 			user_id=user_id,
 			connection_id=connection_id,
