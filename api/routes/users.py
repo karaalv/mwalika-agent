@@ -177,7 +177,13 @@ async def claim_cookie(
 		)
 		if payload.get('sub') != claim_user_id:
 			raise ValueError(
-				'Token user_id does not match provided user_id'
+				'Claim token user_id does not match provided user_id'
+			)
+
+		if user_id != claim_user_id:
+			raise ValueError(
+				'Claim token user_id does not match '
+				'authenticated user_id'
 			)
 	except Exception as e:
 		return http_response(

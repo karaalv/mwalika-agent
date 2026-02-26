@@ -13,9 +13,7 @@
 
 * **URL Parameters:**
 
-    | Parameter | Data Type | Description                    |
-    |-----------|-----------|--------------------------------|
-    | id        | `string`  | User id for database retrieval |
+  * `id` (string, required): User id for database retrieval.
 
 * **Request Body:**
 

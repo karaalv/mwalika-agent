@@ -12,15 +12,15 @@ This endpoint is used to check the health status of the system. It can be used f
 
 * **URL Parameters:**
 
-> None
+  > None
 
 * **Request Body:**
 
-> None
+  > None
 
 ---
 
-* **Successful Response:** Title
+* **Successful Response:** Health Status
 
   * **Code:** `200`
 

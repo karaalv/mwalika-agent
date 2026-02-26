@@ -200,7 +200,6 @@ The `mwalika_security` database stores data related to security monitoring, rate
 
 Stores usage statistics for each user.
 
-<!-- TODO: Update these interfaces to match the latest user observer implementation -->
 ```typescript
 interface UserUsageStats {
     user_id: string;
