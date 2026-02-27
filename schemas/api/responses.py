@@ -10,7 +10,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from schemas.agent.stream import NdJsonItem
+from schemas.agent.stream import StreamItem
 from shared.time import get_timestamp
 
 # --- Metadata schema for API responses ---
@@ -61,7 +61,7 @@ class APIResponse(BaseModel):
 
 # --- WebSocket response schema ---
 
-WebSocketMessagePayload = NdJsonItem | str | dict[str, Any]
+WebSocketMessagePayload = StreamItem | str | dict[str, Any]
 
 
 class WebSocketMessageType(str, Enum):

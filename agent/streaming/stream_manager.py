@@ -22,14 +22,12 @@ from schemas.agent.memory import (
 from schemas.agent.stream import (
 	NdJsonItem,
 	NdJsonTypes,
+	StreamItem,
 	StreamParsingCode,
 	StreamParsingResponse,
 	StreamState,
 )
 from shared.logging import LogStyle, cprint
-
-# TODO: Redo this entire thing to better handle the
-# stream parsing and state
 
 
 class StreamManager:
@@ -38,14 +36,22 @@ class StreamManager:
 	including buffering and processing of events.
 	"""
 
-	def __init__(self, user_id: str, session_id: str, memory_id: str):
+	def __init__(
+		self,
+		user_id: str,
+		session_id: str,
+		memory_id: str,
+		verbosity_level: int = 0,
+	):
 		# Session
 		self.user_id = user_id
 		self.session_id = session_id
 		self.memory_id = memory_id
 		# Config
+		self.verbosity_level = verbosity_level
 		self.max_buffer_chars = 500
-		self.block_prefix = '{'
+		self.block_start = '{'
+		self.block_end = '\n'
 		# State
 		self.state: StreamState | None = None
 		self.buffer: str = ''
@@ -65,6 +71,10 @@ class StreamManager:
 	def clear_state(self):
 		self.state = None
 		self.buffer = ''
+		self.parsing_block = False
+		self.content_items = []
+		self.current_message = ''
+		self.sequence_counter = 0
 		self.tool_name = None
 		self.tool_args = None
 
@@ -100,7 +110,7 @@ class StreamManager:
 
 	# --- Buffer management methods ---
 
-	def _add_block_content(self, item: NdJsonItem):
+	def _add_block_content(self, item: StreamItem):
 		if item.type == NdJsonTypes.IMAGE:
 			content_type = MemoryContentTypes.IMAGE
 		elif item.type == NdJsonTypes.LINK:
@@ -125,10 +135,16 @@ class StreamManager:
 	def _parse_line(
 		self,
 		line: str,
-	) -> NdJsonItem | None:
+	) -> StreamItem | None:
 		try:
 			data = json.loads(line)
-			return NdJsonItem.model_validate(data)
+			ndjson = NdJsonItem.model_validate(data)
+			return StreamItem(
+				type=ndjson.type,
+				payload=ndjson.payload,
+				memory_id=self.memory_id,
+				sequence_number=self._set_sequence_number(),
+			)
 		except Exception as e:
 			add_breadcrumb(
 				category='stream_parsing',
@@ -140,7 +156,12 @@ class StreamManager:
 				},
 			)
 			sentry_sdk.capture_exception(e)
-			return None
+			if self.verbosity_level > 0:
+				cprint(
+					f'Error parsing line as NDJSON: {e}'
+					f'\nLine content: {line}',
+					style=LogStyle.ERROR,
+				)
 
 	def add_delta(self, delta: str) -> StreamParsingResponse:
 		"""
@@ -149,7 +170,11 @@ class StreamManager:
 		Returns a list of parsed items and buffer
 		content.
 		"""
-		# If buffer exceeds max chars without newline,
+		# Used to track if buffer content has
+		# already been added from current delta
+		buffer_seeded = False
+
+		# A. If buffer exceeds max chars without newline,
 		# clear it and return buffer content
 		if len(self.buffer) > self.max_buffer_chars:
 			# Add any remaining message content before clearing
@@ -159,7 +184,7 @@ class StreamManager:
 			self.parsing_block = False
 			return StreamParsingResponse(
 				code=StreamParsingCode.BUFFER,
-				block=NdJsonItem(
+				block=StreamItem(
 					type=NdJsonTypes.TEXT,
 					payload=content,
 					memory_id=self.memory_id,
@@ -167,70 +192,83 @@ class StreamManager:
 				),
 			)
 
-		cprint(
-			f'current delta: {delta}\n'
-			f'Current buffer: {self.buffer}\n'
-			f'Current message: {self.current_message}',
-			style=LogStyle.DEFAULT,
-		)
-
-		# If block prefix detected move to
-		# parsing
-		if (self.block_prefix in delta.strip()) or self.parsing_block:
-			# Set flag to pause further buffering until
-			# block is processed
-			self.parsing_block = True
-			# Append data to buffer
-			self.buffer += delta
-			# Split buffer by newline to check for
-			# complete lines
+		if self.verbosity_level > 0:
 			cprint(
-				f'Buffering block content on {delta}, \n'
-				f'current buffer: {self.buffer}\n'
-				f'current message: {self.current_message}',
-				style=LogStyle.WARNING,
+				f'current delta: {delta}\n'
+				f'Current buffer: {self.buffer}\n'
+				f'Current message: {self.current_message}',
+				style=LogStyle.DEFAULT,
 			)
-			if '\n' in self.buffer:
-				# Add previous message content if exists
-				cprint(
-					f'Newline detected in buffer, attempting to '
-					f'parse block.\n'
-					f'Current buffer: {self.buffer}\n'
-					f'Current message: {self.current_message}',
-					style=LogStyle.WARNING,
+
+		# B. Check for block prefix to start buffering
+		# and parsing block content
+		if self.block_start in delta and not self.parsing_block:
+			# Split delta by prefix, add prefix to
+			# buffer
+			pre_prefix, post_prefix = delta.split(self.block_start, 1)
+			self.buffer = self.block_start + post_prefix
+			buffer_seeded = True
+
+			# Set flag to start parsing block content
+			self.parsing_block = True
+
+			# If there is any content before the block prefix,
+			# add it to the current message and return
+			# as passthrough
+			if pre_prefix:
+				# Add pre-prefix content to current message
+				# adn save content to memory items
+				self.current_message += pre_prefix
+				self._add_message_content(pre_prefix)
+				self.current_message = ''
+				return StreamParsingResponse(
+					code=StreamParsingCode.PASSTHROUGH,
+					block=StreamItem(
+						type=NdJsonTypes.TEXT,
+						payload=pre_prefix,
+						memory_id=self.memory_id,
+						sequence_number=self._set_sequence_number(),
+					),
 				)
+			else:
+				# Save current message content before moving
+				# to parsing block content
 				if self.current_message:
 					self._add_message_content(self.current_message)
 					self.current_message = ''
 
+		# C. If currently parsing a block, continue buffering
+		# until newline is detected to parse block content
+		# or max buffer size is exceeded
+		if self.parsing_block:
+			if not buffer_seeded:
+				self.buffer += delta
+				buffer_seeded = True
+
+			if self.block_end in self.buffer:
 				# Attempt to parse block content as NDJSON
-				block, self.buffer = self.buffer.split('\n', 1)
+				block, remainder = self.buffer.split(
+					self.block_end, 1
+				)
 				item = self._parse_line(block)
+				self.buffer = ''
+				self.parsing_block = False
+
+				# Add any remaining content to the
+				# current message to be included in
+				# memory items
+				if remainder:
+					self.current_message += remainder
+
 				if item:
-					cprint(
-						f'Parsed block item: {item}\n'
-						f'Remaining buffer: {self.buffer}\n'
-						f'Current message: {self.current_message}',
-						style=LogStyle.SUCCESS,
-					)
 					self._add_block_content(item)
-					self.parsing_block = False
 					return StreamParsingResponse(
 						code=StreamParsingCode.BLOCK,
 						block=item,
 					)
 				else:
-					# If parsing fails, clear buffer and
-					# reset state
-					cprint(
-						f'Failed to parse block content, \n'
-						f'clearing buffer.\n'
-						f'Current buffer: {self.buffer}\n'
-						f'Current message: {self.current_message}',
-						style=LogStyle.ERROR,
-					)
-					self.buffer = ''
-					self.parsing_block = False
+					# If parsing fails reset state and
+					# drop buffer content
 					return StreamParsingResponse(
 						code=StreamParsingCode.EMPTY,
 						block=None,
@@ -243,12 +281,12 @@ class StreamManager:
 					block=None,
 				)
 
-		# If no block prefix and not currently parsing, just
+		# D. If no block prefix and not currently parsing, just
 		# return the delta as passthrough
 		self.current_message += delta
 		return StreamParsingResponse(
 			code=StreamParsingCode.PASSTHROUGH,
-			block=NdJsonItem(
+			block=StreamItem(
 				type=NdJsonTypes.TEXT,
 				payload=delta,
 				memory_id=self.memory_id,
@@ -256,26 +294,31 @@ class StreamManager:
 			),
 		)
 
-	def flush_buffer(self) -> StreamParsingResponse | None:
+	def flush_manager(self) -> StreamParsingResponse:
 		"""
 		Flushes any remaining buffer content to assure
 		that all content is processed, and returns any
 		final content as needed.
 		"""
-		remainder = self.buffer.strip()
+		remainder = self.buffer.strip() + self.current_message.strip()
 		if remainder:
 			self._add_message_content(remainder)
 			self.buffer = ''
+			self.current_message = ''
 			return StreamParsingResponse(
 				code=StreamParsingCode.BUFFER,
-				block=NdJsonItem(
+				block=StreamItem(
 					type=NdJsonTypes.TEXT,
 					payload=remainder,
 					memory_id=self.memory_id,
 					sequence_number=self._set_sequence_number(),
 				),
 			)
-		return None
+		else:
+			return StreamParsingResponse(
+				code=StreamParsingCode.EMPTY,
+				block=None,
+			)
 
 	def _flush_content(self) -> None:
 		"""

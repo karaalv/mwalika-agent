@@ -17,7 +17,7 @@ from agent.prompts.agent import AGENT_SYSTEM_PROMPT
 from agent.sessions.creation import create_agent_session
 from agent.sessions.update import update_session_last_active
 from agent.streaming.stream_manager import (
-	NdJsonItem,
+	StreamItem,
 	StreamManager,
 	StreamParsingCode,
 	StreamState,
@@ -108,7 +108,7 @@ async def _publish_session_update(
 
 async def _publish_agent_response(
 	user_id: str,
-	block: NdJsonItem,
+	block: StreamItem,
 	connection_id: str | None = None,
 ) -> None:
 	"""
@@ -210,7 +210,10 @@ async def agent_chat(
 	# stream state for processing events and tool calls
 	memory_id = generate_uuid_str()
 	state = StreamManager(
-		user_id=user_id, session_id=session_id, memory_id=memory_id
+		user_id=user_id,
+		session_id=session_id,
+		memory_id=memory_id,
+		verbosity_level=verbosity_level,
 	)
 	response_stream = await agent_response_stream(
 		system_prompt=agent_system_prompt,
@@ -264,13 +267,13 @@ async def agent_chat(
 				# Handle message text done event
 				# Flush the stream manager buffer and return
 				# any final content as needed
-				remainder = state.flush_buffer()
+				remainder = state.flush_manager()
 				if verbosity_level > 0 and remainder:
 					cprint(
 						f'Message Remainder: {remainder.block}',
 						style=LogStyle.DEFAULT,
 					)
-				if remainder and remainder.block:
+				if remainder.block:
 					# Send final message update to ws
 					await _publish_agent_response(
 						user_id=user_id,

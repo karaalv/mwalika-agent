@@ -29,6 +29,17 @@ class NdJsonItem(BaseModel):
 		...,
 		description='Payload of the NDJSON item',
 	)
+
+
+class StreamItem(BaseModel):
+	type: NdJsonTypes = Field(
+		...,
+		description='Type of the NDJSON item (text, image, or link)',
+	)
+	payload: str = Field(
+		...,
+		description='Payload of the NDJSON item',
+	)
 	memory_id: str = Field(
 		...,
 		description=(
@@ -61,7 +72,7 @@ class StreamParsingResponse(BaseModel):
 			'Code indicating the result of the stream parsing'
 		),
 	)
-	block: NdJsonItem | None = Field(
+	block: StreamItem | None = Field(
 		None,
-		description='NDJSON item block if applicable',
+		description='Stream item block if applicable',
 	)
