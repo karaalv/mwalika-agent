@@ -8,7 +8,7 @@ suspicious behavior or abuse.
 
 from fastapi import WebSocketException, status
 
-from events.lifecycle import publish_websocket_message_event
+from events.lifecycle import publish_websocket_message
 from schemas.api.responses import WebSocketMessageType
 from security.lifecycle import (
 	get_ip_observer,
@@ -30,11 +30,13 @@ async def _publish_block_message_and_close_websocket(
 	indicating the block reason and closes the WebSocket connection
 	with an appropriate status code.
 	"""
-	await publish_websocket_message_event(
+	await publish_websocket_message(
 		user_id=user_id,
 		connection_id=connection_id,
 		message=reason,
+		payload=reason,
 		message_type=WebSocketMessageType.ERROR,
+		success=False,
 	)
 	raise WebSocketException(
 		code=code,

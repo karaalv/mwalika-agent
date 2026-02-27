@@ -25,7 +25,7 @@ from api.guards.agent.checks import (
 from api.lifecycle.websocket_registry import (
 	remove_websocket_connection,
 )
-from events.lifecycle import publish_websocket_message_event
+from events.lifecycle import publish_websocket_message
 from schemas.api.responses import WebSocketMessageType
 from security.config.agent import (
 	MAX_CONTENT_SIZE_BYTES,
@@ -148,11 +148,13 @@ async def guard_agent_websocket_data(
 		# Will only reach this point if message is bad
 		# but user is not blocked, so publish error
 		# message and close connection
-		await publish_websocket_message_event(
+		await publish_websocket_message(
 			user_id=user_id,
 			connection_id=connection_id,
 			message=message,
+			payload=message,
 			message_type=WebSocketMessageType.ERROR,
+			success=False,
 		)
 		await remove_websocket_connection(
 			user_id=user_id,
@@ -176,14 +178,17 @@ async def guard_agent_websocket_input_content(
 	# If input exceeds maximum length, send warning message
 	# but do not perform blocking actions
 	if len(user_input) > MAX_INPUT_LENGTH:
-		await publish_websocket_message_event(
+		message = (
+			f'Input exceeds maximum length of '
+			f'{MAX_INPUT_LENGTH} characters.'
+		)
+		await publish_websocket_message(
 			user_id=user_id,
 			connection_id=connection_id,
-			message=(
-				f'Input exceeds maximum length of '
-				f'{MAX_INPUT_LENGTH} characters.'
-			),
+			message=message,
+			payload=message,
 			message_type=WebSocketMessageType.WARNING,
+			success=False,
 		)
 		return
 

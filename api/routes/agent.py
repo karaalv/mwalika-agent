@@ -45,7 +45,7 @@ from api.utils.responses import (
 from authorisation.jwt.create import create_token
 from events.lifecycle import (
 	publish_event,
-	publish_websocket_message_event,
+	publish_websocket_message,
 )
 from schemas.api.requests import (
 	WebSocketRequest,
@@ -211,14 +211,17 @@ async def agent_chat_websocket(
 		while True:
 			# Rate limit user messages
 			if not limiter.has_capacity:
-				await publish_websocket_message_event(
+				message = (
+					'Rate limit exceeded: Too many messages. '
+					'Please wait before sending more.'
+				)
+				await publish_websocket_message(
+					message=message,
+					payload=message,
 					user_id=user_id,
 					connection_id=connection_id,
-					message=(
-						'Rate limit exceeded: Too many messages. '
-						'Please wait before sending more.'
-					),
 					message_type=WebSocketMessageType.WARNING,
+					success=False,
 				)
 				continue
 

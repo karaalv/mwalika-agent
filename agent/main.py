@@ -98,11 +98,7 @@ async def _publish_session_update(
 		message_type=WebSocketMessageType.SET_SESSION_ID,
 		payload=payload,
 		message=f'Session {session_id} update',
-		event_options=(
-			{'connection_id': connection_id}
-			if connection_id
-			else None
-		),
+		connection_id=connection_id,
 	)
 
 
@@ -124,11 +120,7 @@ async def _publish_agent_response(
 			f'id {block.memory_id}'
 			f'seq {block.sequence_number}'
 		),
-		event_options=(
-			{'connection_id': connection_id}
-			if connection_id
-			else None
-		),
+		connection_id=connection_id,
 	)
 
 
