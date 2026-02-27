@@ -147,3 +147,28 @@ async def publish_websocket_message(
 		payload=ws_response,
 		event_options=event_options,
 	)
+
+
+async def publish_websocket_message_event(
+	user_id: str,
+	connection_id: str,
+	message: WebSocketMessagePayload,
+	message_type: WebSocketMessageType,
+) -> None:
+	"""
+	Utility function to send a WebSocket message to the client
+	by publishing an event to the event bus.
+	"""
+	ws_response = create_websocket_response(
+		request_id=generate_uuid_str(),
+		success=True,
+		message='',
+		message_type=message_type,
+		payload=message,
+	)
+	await publish_event(
+		user_id=user_id,
+		event_type=EventType.WEBSOCKET_MESSAGE,
+		payload=ws_response,
+		event_options={'connection_id': connection_id},
+	)

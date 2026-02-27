@@ -25,7 +25,7 @@ from api.guards.agent.checks import (
 from api.lifecycle.websocket_registry import (
 	remove_websocket_connection,
 )
-from api.websocket.utils import publish_websocket_message_event
+from events.lifecycle import publish_websocket_message_event
 from schemas.api.responses import WebSocketMessageType
 from security.config.agent import (
 	MAX_CONTENT_SIZE_BYTES,

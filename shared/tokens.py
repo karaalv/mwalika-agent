@@ -7,7 +7,7 @@ import tiktoken
 
 # --- Tokenizer instance ---
 
-_tokenizer = tiktoken.get_encoding('gpt-4o')
+_tokenizer = tiktoken.encoding_for_model('gpt-5')
 
 # --- Token counting utility function ---
 

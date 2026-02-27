@@ -7,7 +7,6 @@ import os
 from contextlib import asynccontextmanager
 
 import sentry_sdk
-from dotenv import load_dotenv
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
@@ -15,7 +14,6 @@ from fastapi.responses import JSONResponse
 
 from api.dependencies.ratelimit import rate_limit_ip
 from api.lifecycle.config import (
-	check_environment,
 	shutdown,
 	startup,
 )
@@ -25,43 +23,8 @@ from api.routes.system import system_router
 from api.routes.users import users_router
 from api.utils.responses import http_response
 from exceptions.api import APIException
-from exceptions.core import ErrorContext
 from schemas.security.ratelimit import ResourcePolicyType
 from shared.logging import LogStyle, cprint
-
-# Load environment
-if os.getenv('MWALIKA_ENV') == 'testing':
-	load_dotenv(
-		override=True,
-		dotenv_path=os.path.abspath('.env.test'),
-	)
-elif os.getenv('MWALIKA_ENV') == 'production':
-	load_dotenv(
-		override=True,
-		dotenv_path=os.path.abspath('.env.prod'),
-	)
-elif os.getenv('MWALIKA_ENV') == 'development':
-	load_dotenv(
-		override=True,
-		dotenv_path=os.path.abspath('.env.dev'),
-	)
-else:
-	raise APIException(
-		message=(
-			'Invalid MWALIKA_ENV value. '
-			'Must be "production", "testing", '
-			'or "development".'
-		),
-		code='invalid_environment',
-		context=ErrorContext(
-			operation='load_environment',
-			component='api.server',
-			metadata={'MWALIKA_ENV': os.getenv('MWALIKA_ENV')},
-		),
-	)
-
-# Check environment validity
-check_environment()
 
 # --- Lifecycle management ---
 
@@ -175,45 +138,3 @@ app.include_router(
 app.include_router(
 	router=users_router, prefix='/users', tags=['Users']
 )
-
-# --- Run server ---
-
-if __name__ == '__main__':
-	import uvicorn
-
-	env = os.getenv('MWALIKA_ENV', '')
-	port = int(os.getenv('MWALIKA_SERVER_PORT', ''))
-	cprint(
-		message=(
-			f'Starting API server on port '
-			f'{port} in {env} environment...'
-		),
-		style=LogStyle.INFO,
-		prefix='api.server',
-	)
-
-	if env == 'production':
-		uvicorn.run(
-			app='api.server:app',
-			host='0.0.0.0',
-			port=port,
-			log_level='info',
-			workers=1,
-			reload=False,
-		)
-	elif env == 'development':
-		uvicorn.run(
-			app='api.server:app',
-			host='0.0.0.0',
-			port=port,
-			log_level='debug',
-			reload=True,
-		)
-	elif env == 'testing':
-		uvicorn.run(
-			app='api.server:app',
-			host='0.0.0.0',
-			port=port,
-			log_level='debug',
-			reload=False,
-		)

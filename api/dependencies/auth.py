@@ -4,12 +4,6 @@ and authorization for the Mwalika Agent API, such as
 token validation and user identification.
 """
 
-from dependencies.utils import (
-	check_at_blocked,
-	check_ip_blocked,
-	check_rt_blocked,
-	check_user_blocked,
-)
 from fastapi import (
 	Header,
 	HTTPException,
@@ -22,6 +16,12 @@ from fastapi import (
 from api.dependencies.timeouts import (
 	timeout_limiter_http,
 	timeout_limiter_ws,
+)
+from api.dependencies.utils import (
+	check_at_blocked,
+	check_ip_blocked,
+	check_rt_blocked,
+	check_user_blocked,
 )
 from api.utils.ip_addresses import get_http_ip, get_ws_ip
 from api.websocket.utils import ws_send_error_and_close

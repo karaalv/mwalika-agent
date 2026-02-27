@@ -8,7 +8,6 @@ processing tasks related to WebSocket communication.
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
 
-from events.lifecycle import publish_event
 from schemas.api.responses import (
 	MetaData,
 	WebSocketMessage,
@@ -16,8 +15,6 @@ from schemas.api.responses import (
 	WebSocketMessageType,
 	WebSocketResponse,
 )
-from schemas.events.core import EventType
-from shared.ids import generate_uuid_str
 
 
 def create_websocket_response(
@@ -84,28 +81,3 @@ async def ws_send_error_and_close(
 	)
 	if websocket.client_state == WebSocketState.CONNECTED:
 		await websocket.close(code=1008)
-
-
-async def publish_websocket_message_event(
-	user_id: str,
-	connection_id: str,
-	message: WebSocketMessagePayload,
-	message_type: WebSocketMessageType,
-) -> None:
-	"""
-	Utility function to send a WebSocket message to the client
-	by publishing an event to the event bus.
-	"""
-	ws_response = create_websocket_response(
-		request_id=generate_uuid_str(),
-		success=True,
-		message='',
-		message_type=message_type,
-		payload=message,
-	)
-	await publish_event(
-		user_id=user_id,
-		event_type=EventType.WEBSOCKET_MESSAGE,
-		payload=ws_response,
-		event_options={'connection_id': connection_id},
-	)

@@ -6,12 +6,11 @@ that are used for managing and enforcing rate limits across
 different API routes and resource types.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
 from aiolimiter import AsyncLimiter
-from pydantic import BaseModel, Field
 
 from shared.time import get_timestamp_s
 
@@ -36,7 +35,7 @@ class ResourcePolicyType(str, Enum):
 # --- Policy configuration dataclass ---
 
 
-@dataclass
+@dataclass(slots=True)
 class PolicyConfig:
 	"""
 	Represents the configuration for a specific rate limiting policy,
@@ -51,48 +50,16 @@ class PolicyConfig:
 # --- Rate limiter schema ---
 
 
-class RateLimiter(BaseModel):
+@dataclass(slots=True)
+class RateLimiter:
 	"""
 	Represents a rate limiter instance for a specific resource
 	policy and identifier (e.g., IP or user ID). This schema is
 	used to store and manage limiter instances in memory.
 	"""
 
-	policy_type: ResourcePolicyType = Field(
-		...,
-		description=(
-			'The type of resource policy '
-			'this limiter is associated with'
-		),
-	)
-	identifier_type: Literal['ip', 'user'] = Field(
-		...,
-		description=(
-			'The type of identifier this limiter is based on, '
-			"either 'ip' for IP-based limits or 'user' for "
-			'user-based limits'
-		),
-	)
-	identifier_value: str = Field(
-		...,
-		description=(
-			'The specific value of the identifier '
-			'(e.g., the IP address '
-			'or user ID) that this limiter applies to'
-		),
-	)
-	limiter: AsyncLimiter = Field(
-		...,
-		description=(
-			'The actual AsyncLimiter instance that '
-			'enforces the rate limit'
-		),
-	)
-	created_at: int = Field(
-		default_factory=get_timestamp_s,
-		description=(
-			'The timestamp when this limiter instance was created, '
-			'which can be '
-			'used for monitoring and cleanup purposes'
-		),
-	)
+	policy_type: ResourcePolicyType
+	identifier_type: Literal['ip', 'user']
+	identifier_value: str
+	limiter: AsyncLimiter
+	created_at: int = field(default_factory=get_timestamp_s)

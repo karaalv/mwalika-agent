@@ -64,7 +64,7 @@ class APIResponse(BaseModel):
 WebSocketMessagePayload = NdJsonItem | str | dict[str, Any]
 
 
-class WebSocketMessageType(Enum):
+class WebSocketMessageType(str, Enum):
 	HEARTBEAT = 'heartbeat'
 	AGENT_RESPONSE = 'agent_response'
 	TOOL_MESSAGE = 'tool_message'

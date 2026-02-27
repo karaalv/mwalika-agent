@@ -20,22 +20,18 @@ from shared.logging import LogStyle, cprint
 
 # --- Configuration ---
 
-_SENTRY_DSN = getenv('SENTRY_DSN', '')
-_SENTRY_ENVIRONMENT = getenv('MWALIKA_ENV', '')
-_SENTRY_TRACES_SAMPLE_RATE = float(
-	getenv('SENTRY_TRACES_SAMPLE_RATE', '')
-)
 
-
-def init_sentry(
-	dsn: str = _SENTRY_DSN,
-	environment: str = _SENTRY_ENVIRONMENT,
-	traces_sample_rate: float = _SENTRY_TRACES_SAMPLE_RATE,
-) -> None:
+def init_sentry() -> None:
 	"""
 	Initializes Sentry with the provided
 	DSN and environment.
 	"""
+	dsn = getenv('SENTRY_DSN', '')
+	environment = getenv('MWALIKA_ENV', '')
+	traces_sample_rate = float(
+		getenv('SENTRY_TRACES_SAMPLE_RATE', '0.0')
+	)
+
 	# Check for required configuration
 	if not dsn:
 		raise SentryException(

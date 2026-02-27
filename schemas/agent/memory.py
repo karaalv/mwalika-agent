@@ -13,7 +13,7 @@ from shared.ids import generate_uuid_str
 from shared.time import get_timestamp
 
 
-class MemoryContentTypes(Enum):
+class MemoryContentTypes(str, Enum):
 	TEXT = 'text'
 	IMAGE = 'image'
 	LINK = 'link'

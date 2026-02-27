@@ -42,9 +42,11 @@ from api.utils.responses import (
 	create_websocket_response,
 	http_response,
 )
-from api.websocket.utils import publish_websocket_message_event
 from authorisation.jwt.create import create_token
-from events.lifecycle import publish_event
+from events.lifecycle import (
+	publish_event,
+	publish_websocket_message_event,
+)
 from schemas.api.requests import (
 	WebSocketRequest,
 	WebSocketRequestType,

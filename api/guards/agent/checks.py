@@ -8,7 +8,7 @@ suspicious behavior or abuse.
 
 from fastapi import WebSocketException, status
 
-from api.websocket.utils import publish_websocket_message_event
+from events.lifecycle import publish_websocket_message_event
 from schemas.api.responses import WebSocketMessageType
 from security.lifecycle import (
 	get_ip_observer,

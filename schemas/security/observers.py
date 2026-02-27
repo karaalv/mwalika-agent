@@ -5,6 +5,7 @@ and other relevant data structures that can be used for monitoring,
 analytics, and enforcing security policies.
 """
 
+from dataclasses import dataclass, field
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -76,29 +77,16 @@ class BlockedEntity(BaseModel):
 	)
 
 
-class MinuteCounter(BaseModel):
+@dataclass(slots=True)
+class MinuteCounter:
 	"""
 	Represents a counter for tracking the number of events that
 	occur within a specific minute, which can be used for enforcing
 	per-minute rate limits in the Mwalika Agent system.
 	"""
 
-	minute_key: int = Field(
-		...,
-		description=(
-			'An integer representing the specific minute '
-			'(e.g., 202406011234) used to track events that '
-			'occur within that minute for rate limiting purposes'
-		),
-	)
-	count: int = Field(
-		default=0,
-		description=(
-			'The count of events that have occurred within the '
-			'specified minute, which can be incremented and checked '
-			'against defined rate limits to enforce security policies'
-		),
-	)
+	minute_key: int
+	count: int
 
 
 class DbWriteBackTaskType(str, Enum):
@@ -112,20 +100,15 @@ class DbWriteBackTaskType(str, Enum):
 	DELETE_BLOCKED_ENTITY = 'delete_blocked_entity'
 
 
-class DbWriteBackTask(BaseModel):
+@dataclass
+class DbWriteBackTask:
 	"""
 	Represents a task for writing back data to the database during
 	observer operations, which can be used to persist in-memory state
 	changes related to blocks or other security-related actions.
 	"""
 
-	task_type: DbWriteBackTaskType = Field(
-		..., description=('The type of the database write-back task,')
-	)
-	blocked_entity: BlockedEntity | None = Field(
-		...,
-		description=(
-			'The blocked entity associated with this '
-			'database write-back '
-		),
+	task_type: DbWriteBackTaskType
+	blocked_entity: BlockedEntity | None = field(
+		default=None,
 	)

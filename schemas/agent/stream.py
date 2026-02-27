@@ -9,12 +9,12 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
-class StreamState(Enum):
+class StreamState(str, Enum):
 	TOOL = 'tool'
 	MESSAGE = 'message'
 
 
-class NdJsonTypes(Enum):
+class NdJsonTypes(str, Enum):
 	TEXT = 'text'
 	IMAGE = 'image'
 	LINK = 'link'
@@ -47,7 +47,7 @@ class NdJsonItem(BaseModel):
 # --- Stream parsing response schema ---
 
 
-class StreamParsingCode(Enum):
+class StreamParsingCode(str, Enum):
 	BLOCK = 'block'
 	BUFFER = 'buffer'
 	PASSTHROUGH = 'passthrough'

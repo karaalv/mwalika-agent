@@ -14,7 +14,7 @@ from rich.theme import Theme
 # --- Log Styles ---
 
 
-class LogStyle(Enum):
+class LogStyle(str, Enum):
 	DEFAULT = 'default'
 	ERROR = 'error'
 	SUCCESS = 'success'
