@@ -64,7 +64,6 @@ class IpObserver:
 		self._ips_to_update: set[str] = set()
 		self._update_interval_seconds = 60
 		self._max_size_to_force_push = 50
-		self._last_update_time = get_timestamp_s()
 		self._push_stats_task: asyncio.Task | None = None
 		self._db_write_back_task: asyncio.Task | None = None
 		self._db_write_back_queue: asyncio.Queue[DbWriteBackTask] = (
@@ -223,19 +222,8 @@ class IpObserver:
 		"""
 		try:
 			while True:
-				current_time = get_timestamp_s()
-				time_since_last_update = (
-					current_time - self._last_update_time
-				)
-				if (
-					time_since_last_update
-					>= self._update_interval_seconds
-					or len(self._ips_to_update)
-					>= self._max_size_to_force_push
-				):
-					await self._push_stats_to_db()
-					self._last_update_time = current_time
-				await asyncio.sleep(1)
+				await self._push_stats_to_db()
+				await asyncio.sleep(self._update_interval_seconds)
 		except asyncio.CancelledError:
 			pass
 		except Exception as e:
@@ -1061,6 +1049,38 @@ class IpObserver:
 			self._blocked_ips.pop(ip_address, None)
 			self._rate_limit_tracker.pop(ip_address, None)
 
+	async def _cleanup(self):
+		"""
+		Performs cleanup of old IP usage stats and blocked IP records
+		from the database based on the defined persistence duration,
+		which can help manage storage and ensure that old data does
+		not accumulate indefinitely.
+		"""
+		cutoff_time = get_timestamp_s() - self._retention_time_s
+		ip_addresses_to_delete = []
+
+		async with self._lock:
+			for ip_address, stats in self._ip_usage_stats.items():
+				if (
+					stats.last_api_request_at is not None
+					and stats.last_api_request_at < cutoff_time
+					and ip_address not in self._blocked_ips
+				):
+					ip_addresses_to_delete.append(ip_address)
+
+			if ip_addresses_to_delete:
+				await self._delete_ip_data_state(
+					ip_addresses_to_delete
+				)
+
+		if ip_addresses_to_delete:
+			await self._delete_ip_stats_from_db(
+				ip_addresses_to_delete
+			)
+			await self._delete_blocked_ips_from_db(
+				ip_addresses_to_delete
+			)
+
 	async def _periodic_cleanup(self):
 		"""
 		Periodically performs cleanup of old IP usage stats and
@@ -1070,38 +1090,7 @@ class IpObserver:
 		"""
 		try:
 			while True:
-				cutoff_time = (
-					get_timestamp_s() - self._retention_time_s
-				)
-				ip_addresses_to_delete = []
-
-				async with self._lock:
-					for (
-						ip_address,
-						stats,
-					) in self._ip_usage_stats.items():
-						if (
-							stats.last_api_request_at
-							and stats.last_api_request_at
-							< cutoff_time
-							and ip_address not in self._blocked_ips
-						):
-							ip_addresses_to_delete.append(ip_address)
-
-					if ip_addresses_to_delete:
-						await self._delete_ip_data_state(
-							ip_addresses_to_delete
-						)
-
-				# Delete old records outside of lock
-				if ip_addresses_to_delete:
-					await self._delete_ip_stats_from_db(
-						ip_addresses_to_delete
-					)
-					await self._delete_blocked_ips_from_db(
-						ip_addresses_to_delete
-					)
-
+				await self._cleanup()
 				await asyncio.sleep(self._cleanup_interval_seconds)
 		except asyncio.CancelledError:
 			pass

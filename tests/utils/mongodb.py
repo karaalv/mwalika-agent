@@ -35,3 +35,13 @@ async def clear_test_databases() -> None:
 		if db == MongoDBDatabase.MWALIKA_CORPUS:
 			continue
 		await client.drop_database(db.value)
+
+
+async def drop_test_collection(collection: MongoDBCollection) -> None:
+	"""
+	Drops the specified MongoDB collection entirely,
+	removing all documents and indexes. Use with caution
+	in tests to ensure a clean slate for each test case.
+	"""
+	coll = get_collection(collection)
+	await coll.drop()

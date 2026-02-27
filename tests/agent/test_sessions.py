@@ -7,6 +7,7 @@ including session creation, retrieval, and state updates.
 from agent.sessions.creation import create_agent_session
 from databases.mongodb.main import MongoDBCollection
 from schemas.agent.sessions import AgentSession
+from shared.ids import generate_uuid_str
 from tests.utils.mongodb import clear_collection
 
 # --- Test Cases ---
@@ -22,7 +23,7 @@ async def test_create_agent_session():
 	await clear_collection(MongoDBCollection.SESSIONS)
 
 	# Create a new agent session
-	user_id = 'test_user'
+	user_id = generate_uuid_str()
 	user_input = 'Test Chat Session'
 	new_session = await create_agent_session(
 		user_id=user_id,

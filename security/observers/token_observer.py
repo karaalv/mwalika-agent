@@ -999,7 +999,7 @@ class TokenObserver:
 		async with self._lock:
 			for token_id, stats in self._rt_usage_stats.items():
 				if (
-					stats.last_api_request_at
+					stats.last_api_request_at is not None
 					and stats.last_api_request_at < cutoff_time
 					and token_id not in self._blocked_tokens
 				):
@@ -1022,7 +1022,7 @@ class TokenObserver:
 		async with self._lock:
 			for token_id, stats in self._at_usage_stats.items():
 				if (
-					stats.last_api_request_at
+					stats.last_api_request_at is not None
 					and stats.last_api_request_at < cutoff_time
 					and token_id not in self._blocked_tokens
 				):
@@ -1038,6 +1038,16 @@ class TokenObserver:
 				token_type=TokenType.ACCESS,
 			)
 
+	async def _cleanup(self):
+		"""
+		Performs cleanup of expired blocks and old usage records from
+		the in-memory state and the database, which helps to ensure
+		that the observer's state remains manageable and that blocks
+		are not enforced longer than necessary.
+		"""
+		await self._rt_cleanup()
+		await self._at_cleanup()
+
 	async def _periodic_cleanup(self):
 		"""
 		Periodically performs cleanup tasks such as removing expired
@@ -1047,8 +1057,7 @@ class TokenObserver:
 		"""
 		try:
 			while True:
-				await self._rt_cleanup()
-				await self._at_cleanup()
+				await self._cleanup()
 				await asyncio.sleep(self._cleanup_interval_seconds)
 		except asyncio.CancelledError:
 			pass

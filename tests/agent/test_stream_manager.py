@@ -13,15 +13,16 @@ from schemas.agent.stream import (
 	NdJsonTypes,
 	StreamParsingCode,
 )
+from shared.ids import generate_uuid_str
 
 # --- Test utils ---
 
 
 def _make_sm() -> StreamManager:
 	return StreamManager(
-		user_id='test_user',
-		session_id='test_session',
-		memory_id='test_memory',
+		user_id=generate_uuid_str(),
+		session_id=generate_uuid_str(),
+		memory_id=generate_uuid_str(),
 		verbosity_level=1,
 	)
 

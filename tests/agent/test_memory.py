@@ -16,6 +16,7 @@ from schemas.agent.memory import (
 	MemoryContent,
 	MemoryContentTypes,
 )
+from shared.ids import generate_uuid_str
 from tests.utils.mongodb import clear_collection
 
 # --- Utility Functions ---
@@ -49,6 +50,9 @@ async def test_insert_and_retrieve_agent_memory():
 	memory management functions are working as
 	expected.
 	"""
+	test_user_id = generate_uuid_str()
+	test_session_id = generate_uuid_str()
+
 	# Create a test memory entry
 	test_content = [
 		MemoryContent(
@@ -57,16 +61,16 @@ async def test_insert_and_retrieve_agent_memory():
 		)
 	]
 	inserted_memory = await insert_agent_memory_content(
-		session_id='test_session',
-		user_id='test_user',
+		session_id=test_session_id,
+		user_id=test_user_id,
 		sender='user',
 		content=test_content,
 	)
 
 	# Retrieve memory entries for the session and user
 	retrieved_memories = await retrieve_agent_memory(
-		session_id='test_session',
-		user_id='test_user',
+		session_id=test_session_id,
+		user_id=test_user_id,
 	)
 
 	# Validate that the inserted memory is in the retrieved memories
@@ -77,8 +81,8 @@ async def test_insert_and_retrieve_agent_memory():
 
 	# Test the memory prompt retrieval
 	memory_prompt = await retrieve_agent_memory_prompt(
-		session_id='test_session',
-		user_id='test_user',
+		session_id=test_session_id,
+		user_id=test_user_id,
 	)
 	assert 'Test message from user' in memory_prompt
 

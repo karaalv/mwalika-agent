@@ -69,7 +69,6 @@ class UserObserver:
 		self._users_to_update: set[str] = set()
 		self._update_interval_seconds = 60
 		self._max_size_to_force_push = 50
-		self._last_update_time = get_timestamp_s()
 		self._schedule_task: asyncio.Task | None = None
 		self._db_write_back_task: asyncio.Task | None = None
 		self._db_write_back_queue: asyncio.Queue[DbWriteBackTask] = (
@@ -233,19 +232,8 @@ class UserObserver:
 		"""
 		try:
 			while True:
-				current_time = get_timestamp_s()
-				time_since_last_update = (
-					current_time - self._last_update_time
-				)
-				if (
-					time_since_last_update
-					>= self._update_interval_seconds
-					or len(self._users_to_update)
-					>= self._max_size_to_force_push
-				):
-					await self._push_stats_to_db()
-					self._last_update_time = current_time
-				await asyncio.sleep(1)
+				await self._push_stats_to_db()
+				await asyncio.sleep(self._update_interval_seconds)
 		except asyncio.CancelledError:
 			pass
 		except Exception as e:
@@ -1055,6 +1043,33 @@ class UserObserver:
 			self._blocked_users.pop(user_id, None)
 			self._rate_limit_tracker.pop(user_id, None)
 
+	async def _cleanup(self) -> None:
+		"""
+		Cleans up expired blocks and old stats from the database,
+		which can be used to ensure that the system does not retain
+		stale data and that blocks are lifted after their duration
+		has passed.
+		"""
+		cutoff_time = get_timestamp_s() - self._retention_time_s
+		expired_user_ids = []
+
+		async with self._lock:
+			for user_id, stats in self._user_stats.items():
+				if (
+					stats.last_api_request_at is not None
+					and stats.last_api_request_at < cutoff_time
+					and user_id not in self._blocked_users
+				):
+					expired_user_ids.append(user_id)
+
+			if expired_user_ids:
+				await self._delete_user_data_state(expired_user_ids)
+
+		# Delete old records outside of lock
+		if expired_user_ids:
+			await self._delete_user_stats_from_db(expired_user_ids)
+			await self._delete_blocked_users_from_db(expired_user_ids)
+
 	async def _periodic_cleanup(self) -> None:
 		"""
 		Periodically cleans up expired blocks and old stats from the
@@ -1064,34 +1079,7 @@ class UserObserver:
 		"""
 		try:
 			while True:
-				cutoff_time = (
-					get_timestamp_s() - self._retention_time_s
-				)
-				expired_user_ids = []
-
-				async with self._lock:
-					for user_id, stats in self._user_stats.items():
-						if (
-							stats.last_blocked_at
-							and stats.last_blocked_at < cutoff_time
-							and user_id not in self._blocked_users
-						):
-							expired_user_ids.append(user_id)
-
-					if expired_user_ids:
-						await self._delete_user_data_state(
-							expired_user_ids
-						)
-
-				# Delete old records outside of lock
-				if expired_user_ids:
-					await self._delete_user_stats_from_db(
-						expired_user_ids
-					)
-					await self._delete_blocked_users_from_db(
-						expired_user_ids
-					)
-
+				await self._cleanup()
 				await asyncio.sleep(self._cleanup_interval_seconds)
 		except asyncio.CancelledError:
 			pass
