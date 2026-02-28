@@ -25,7 +25,10 @@ from api.dependencies.utils import (
 	check_ip_blocked,
 )
 from api.utils.ip_addresses import get_http_ip, get_ws_ip
-from security.ratelimit.policies import ResourcePolicyType
+from security.ratelimit.policies import (
+	ResourcePolicyIdentifierType,
+	ResourcePolicyType,
+)
 from security.ratelimit.store import get_limiter
 
 # --- Rate limit dependency factory ---
@@ -49,7 +52,7 @@ def rate_limit_ip(
 
 		limiter = await get_limiter(
 			policy_type=policy_type,
-			identifier_type='ip',
+			identifier_type=ResourcePolicyIdentifierType.IP,
 			identifier_value=request_ip,
 		)
 
@@ -79,7 +82,7 @@ def require_frontend_and_rate_limit(
 
 		limiter = await get_limiter(
 			policy_type=policy_type,
-			identifier_type='ip',
+			identifier_type=ResourcePolicyIdentifierType.IP,
 			identifier_value=request_ip,
 		)
 
@@ -114,14 +117,14 @@ def require_refresh_and_rate_limit(
 		# Get limiters for both user ID and IP address
 		ip_limiter = await get_limiter(
 			policy_type=policy_type,
-			identifier_type='ip',
+			identifier_type=ResourcePolicyIdentifierType.IP,
 			identifier_value=request_ip,
 		)
 
 		if user_id:
 			user_limiter = await get_limiter(
 				policy_type=policy_type,
-				identifier_type='user',
+				identifier_type=ResourcePolicyIdentifierType.USER,
 				identifier_value=user_id,
 			)
 			# If user ID is available,
@@ -160,14 +163,14 @@ def require_access_and_rate_limit(
 		# Get limiters for both user ID and IP address
 		ip_limiter = await get_limiter(
 			policy_type=policy_type,
-			identifier_type='ip',
+			identifier_type=ResourcePolicyIdentifierType.IP,
 			identifier_value=request_ip,
 		)
 
 		if user_id:
 			user_limiter = await get_limiter(
 				policy_type=policy_type,
-				identifier_type='user',
+				identifier_type=ResourcePolicyIdentifierType.USER,
 				identifier_value=user_id,
 			)
 			# If user ID is available,
@@ -205,14 +208,14 @@ def ws_require_access_and_rate_limit(
 		# Get limiters for both user ID and IP address
 		ip_limiter = await get_limiter(
 			policy_type=policy_type,
-			identifier_type='ip',
+			identifier_type=ResourcePolicyIdentifierType.IP,
 			identifier_value=request_ip,
 		)
 
 		if user_id:
 			user_limiter = await get_limiter(
 				policy_type=policy_type,
-				identifier_type='user',
+				identifier_type=ResourcePolicyIdentifierType.USER,
 				identifier_value=user_id,
 			)
 			# If user ID is available,

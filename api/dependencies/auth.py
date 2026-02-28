@@ -24,9 +24,16 @@ from api.dependencies.utils import (
 	check_user_blocked,
 )
 from api.utils.ip_addresses import get_http_ip, get_ws_ip
+from api.utils.tokens import (
+	verify_access_token,
+	verify_frontend_token,
+	verify_refresh_token,
+)
 from api.websocket.utils import ws_send_error_and_close
-from authorisation.jwt.verify import verify_token
-from schemas.security.ratelimit import ResourcePolicyType
+from schemas.security.ratelimit import (
+	ResourcePolicyIdentifierType,
+	ResourcePolicyType,
+)
 from security.lifecycle import (
 	is_at_blocked,
 	is_ip_blocked,
@@ -39,7 +46,7 @@ from security.ratelimit.store import get_limiter
 
 
 async def require_frontend_header(
-	request: Request, x_mwalika: str | None = Header(...)
+	request: Request, x_mwalika: str = Header(..., alias='X-Mwalika')
 ):
 	"""
 	Dependency to verify the presence of a custom header
@@ -55,20 +62,13 @@ async def require_frontend_header(
 	# Rate limit auth dependencies based on IP
 	limiter = await get_limiter(
 		policy_type=ResourcePolicyType.API_DEPENDENCY,
-		identifier_type='ip',
+		identifier_type=ResourcePolicyIdentifierType.IP,
 		identifier_value=ip,
 	)
 	async with timeout_limiter_http(limiter):
-		if x_mwalika != 'frontend':
-			raise HTTPException(
-				status_code=status.HTTP_400_BAD_REQUEST,
-				detail='Invalid X-Mwalika header',
-			)
 		token = x_mwalika
 		try:
-			payload = verify_token(
-				token=token, issuer='mwalika-agent', typ='frontend'
-			)
+			payload = verify_frontend_token(token)
 			# Return the token payload
 			return payload
 		except Exception as e:
@@ -92,7 +92,7 @@ async def require_refresh_token(request: Request):
 	# Rate limit auth dependencies based on IP
 	limiter = await get_limiter(
 		policy_type=ResourcePolicyType.API_DEPENDENCY,
-		identifier_type='ip',
+		identifier_type=ResourcePolicyIdentifierType.IP,
 		identifier_value=ip,
 	)
 	async with timeout_limiter_http(limiter):
@@ -102,31 +102,29 @@ async def require_refresh_token(request: Request):
 				detail='Refresh token missing',
 			)
 		try:
-			payload = verify_token(
-				token=refresh_token,
-				issuer='mwalika-agent',
-				typ='refresh',
-			)
-			# Check if the refresh token is blocked
-			await check_rt_blocked(payload['jti'])
-
-			# If the user has been set in rt, check if
-			# the user is blocked as well
-			user_id = payload.get('sub')
-			if user_id:
-				await check_user_blocked(user_id)
-
-			# Return the token payload
-			return payload
+			payload = verify_refresh_token(refresh_token)
 		except Exception as e:
 			raise HTTPException(
 				status_code=status.HTTP_401_UNAUTHORIZED,
 				detail=str(e),
 			) from e
 
+		# Check if the refresh token is blocked
+		await check_rt_blocked(payload['jti'])
+
+		# If the user has been set in rt, check if
+		# the user is blocked as well
+		user_id = payload.get('sub')
+		if user_id:
+			await check_user_blocked(user_id)
+
+		# Return the token payload
+		return payload
+
 
 async def require_access_header(
-	request: Request, authorization: str | None = Header(...)
+	request: Request,
+	authorization: str = Header(..., alias='Authorization'),
 ):
 	"""
 	Dependency to verify the Authorization header
@@ -141,7 +139,7 @@ async def require_access_header(
 	# Rate limit auth dependencies based on IP
 	limiter = await get_limiter(
 		policy_type=ResourcePolicyType.API_DEPENDENCY,
-		identifier_type='ip',
+		identifier_type=ResourcePolicyIdentifierType.IP,
 		identifier_value=ip,
 	)
 	async with timeout_limiter_http(limiter):
@@ -157,9 +155,7 @@ async def require_access_header(
 			)
 		token = authorization[len('Bearer ') :]
 		try:
-			payload = verify_token(
-				token=token, issuer='mwalika-agent', typ='access'
-			)
+			payload = verify_access_token(token)
 
 			# Check if the access token is blocked
 			await check_at_blocked(payload['jti'])
@@ -201,7 +197,7 @@ async def ws_require_access_token(websocket: WebSocket):
 	# Rate limit auth dependencies based on IP
 	limiter = await get_limiter(
 		policy_type=ResourcePolicyType.API_DEPENDENCY,
-		identifier_type='ip',
+		identifier_type=ResourcePolicyIdentifierType.IP,
 		identifier_value=ip,
 	)
 	async with timeout_limiter_ws(limiter, websocket):
@@ -222,11 +218,7 @@ async def ws_require_access_token(websocket: WebSocket):
 			)
 
 		try:
-			payload = verify_token(
-				token=access_token,
-				issuer='mwalika-agent',
-				typ='access',
-			)
+			payload = verify_access_token(access_token)
 			user_id: str = payload.get('sub', '')
 			token_id: str = payload.get('jti', '')
 

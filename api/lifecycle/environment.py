@@ -76,3 +76,9 @@ def check_environment() -> None:
 		raise RuntimeError(
 			'JWT_SECRET environment variable must be set.'
 		)
+
+	frontend_secret = os.getenv('FRONTEND_SECRET')
+	if not frontend_secret:
+		raise RuntimeError(
+			'FRONTEND_SECRET environment variable must be set.'
+		)

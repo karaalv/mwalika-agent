@@ -4,84 +4,24 @@ fixtures for testing the Mwalika Agent.
 """
 
 import os
-from asyncio import sleep
+from collections.abc import AsyncGenerator, Generator
 
+import pytest
 import pytest_asyncio
+from asgi_lifespan import LifespanManager
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
-from pymongo import AsyncMongoClient
-from qdrant_client import AsyncQdrantClient
+from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
-from databases.mongodb.config import (
-	close_mongodb_client,
-	set_mongodb_client,
-)
-from databases.qdrant.config import (
-	close_qdrant_client,
-	set_qdrant_client,
-)
-from openai_client.config import (
-	close_openai_client,
-	set_openai_client,
-)
-from shared.logging import (
-	LogStyle,
-	cprint,
+from api.server import app
+from tests.config.conftest_utils import (
+	close_test_clients,
+	init_test_clients,
 )
 
 load_dotenv(override=True, dotenv_path=os.path.abspath('.env.test'))
 
 # --- Async client fixtures ---
-
-
-async def _init_mongo_test_client() -> None:
-	mongo_uri = os.getenv('MONGODB_URI')
-	if not mongo_uri:
-		raise RuntimeError(
-			'MONGODB_URI environment variable is not set.'
-		)
-	client = AsyncMongoClient(mongo_uri)
-	await client.aconnect()
-	set_mongodb_client(client)
-	cprint(
-		'MongoDB test client initialized.',
-		style=LogStyle.SUCCESS,
-		prefix='tests.conftest',
-	)
-
-
-async def _init_qdrant_test_client() -> None:
-	qdrant_url = os.getenv('QDRANT_URL')
-	qdrant_api_key = os.getenv('QDRANT_API_KEY')
-	if not qdrant_url:
-		raise RuntimeError(
-			'QDRANT_URL environment variable is not set.'
-		)
-	client = AsyncQdrantClient(
-		url=qdrant_url,
-		api_key=qdrant_api_key,
-	)
-	set_qdrant_client(client)
-	cprint(
-		'QdrantDB test client initialized.',
-		style=LogStyle.SUCCESS,
-		prefix='tests.conftest',
-	)
-
-
-async def _init_openai_test_client() -> None:
-	openai_api_key = os.getenv('OPENAI_API_KEY')
-	if not openai_api_key:
-		raise RuntimeError(
-			'OPENAI_API_KEY environment variable is not set.'
-		)
-	client = AsyncOpenAI(api_key=openai_api_key)
-	set_openai_client(client)
-	cprint(
-		'OpenAI test client initialized.',
-		style=LogStyle.SUCCESS,
-		prefix='tests.conftest',
-	)
 
 
 @pytest_asyncio.fixture(scope='session', autouse=True)
@@ -91,15 +31,38 @@ async def setup_async_clients():
 	MongoDB, QdrantDB, and OpenAI.
 	"""
 
-	await _init_mongo_test_client()
-	await _init_qdrant_test_client()
-	await _init_openai_test_client()
+	await init_test_clients()
 
 	yield
 
-	await close_openai_client()
-	await close_qdrant_client()
-	await close_mongodb_client()
+	await close_test_clients()
 
 	# Ensure closure
-	await sleep(1)
+	# await sleep(1)
+
+
+# --- FastAPI test client fixture ---
+
+
+@pytest.fixture(scope='session')
+async def http_client() -> AsyncGenerator[AsyncClient, None]:
+	"""
+	Fixture to provide an HTTP client for testing
+	the FastAPI application.
+	"""
+	async with LifespanManager(app):
+		transport = ASGITransport(app=app)
+		async with AsyncClient(
+			transport=transport, base_url='http://test'
+		) as client:
+			yield client
+
+
+@pytest.fixture(scope='session')
+def ws_client() -> Generator[TestClient, None, None]:
+	"""
+	Fixture to provide a WebSocket client for testing
+	the FastAPI application.
+	"""
+	with TestClient(app) as client:
+		yield client

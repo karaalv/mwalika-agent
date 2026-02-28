@@ -13,7 +13,7 @@ from shared.ids import generate_uuid_str
 
 # --- Constants ---
 
-_JWT_SECRET = getenv('JWT_SECRET')
+_JWT_SECRET = getenv('JWT_SECRET', '')
 
 # --- JWT creation utilities ---
 
@@ -22,6 +22,7 @@ def create_token(
 	sub: str,
 	iss: str,
 	typ: str,
+	secret: str,
 	ttl_seconds: int = 180,
 ) -> str:
 	now = int(time.time())
@@ -37,7 +38,7 @@ def create_token(
 
 	token = jwt.encode(
 		payload,
-		_JWT_SECRET,
+		secret,
 		algorithm='HS256',
 	)
 

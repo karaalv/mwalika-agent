@@ -9,7 +9,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request
 
 from api.config.settings import (
-	ACCESS_TOKEN_EXPIRY_SECONDS,
 	COOKIE_DOMAIN,
 	REFRESH_TOKEN_COOKIE_EXPIRY_SECONDS,
 	USER_ID_COOKIE_EXPIRY_SECONDS,
@@ -26,8 +25,11 @@ from api.guards.users.routes import (
 )
 from api.utils.ip_addresses import get_http_ip
 from api.utils.responses import http_response
-from authorisation.jwt.create import create_token
-from authorisation.jwt.verify import verify_token
+from api.utils.tokens import (
+	generate_access_token,
+	generate_refresh_token,
+	verify_claim_token,
+)
 from schemas.security.ratelimit import ResourcePolicyType
 
 # --- Router setup ---
@@ -62,12 +64,7 @@ async def get_refresh_token(
 	await guard_rt_generation(ip_address=ip)
 
 	# Create a general refresh token with no specific user ID
-	token = create_token(
-		sub='',
-		iss='mwalika-agent',
-		typ='refresh',
-		ttl_seconds=REFRESH_TOKEN_COOKIE_EXPIRY_SECONDS,
-	)
+	token = generate_refresh_token(user_id=None)
 	response = http_response(
 		request_id=request_id,
 		success=True,
@@ -111,12 +108,7 @@ async def get_access_token(
 
 	# Create access token and scope to user if
 	# user id is in cookie
-	token = create_token(
-		sub=user_id if user_id else '',
-		iss='mwalika-agent',
-		typ='access',
-		ttl_seconds=ACCESS_TOKEN_EXPIRY_SECONDS,
-	)
+	token = generate_access_token(user_id=user_id)
 	return http_response(
 		request_id=request_id,
 		success=True,
@@ -170,11 +162,7 @@ async def claim_cookie(
 		)
 
 	try:
-		payload = verify_token(
-			token=claim_token,
-			issuer='mwalika-agent',
-			typ='claim',
-		)
+		payload = verify_claim_token(claim_token)
 		if payload.get('sub') != claim_user_id:
 			raise ValueError(
 				'Claim token user_id does not match provided user_id'
@@ -222,12 +210,7 @@ async def claim_cookie(
 	)
 
 	# Create new refresh token for the user
-	new_refresh_token = create_token(
-		sub=user_id,
-		iss='mwalika-agent',
-		typ='refresh',
-		ttl_seconds=REFRESH_TOKEN_COOKIE_EXPIRY_SECONDS,
-	)
+	new_refresh_token = generate_refresh_token(user_id=user_id)
 
 	response.set_cookie(
 		key='mwalika_rt',

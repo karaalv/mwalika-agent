@@ -37,9 +37,9 @@ def start_openai_client() -> None:
 
 async def close_openai_client() -> None:
 	"""Closes the global OpenAI client."""
-	openai = get_openai_client()
-	if openai is not None:
-		await openai.close()
+	global _openai_client
+	if _openai_client is not None:
+		await _openai_client.close()
 		set_openai_client(None)
 		cprint(
 			'OpenAI client closed.',

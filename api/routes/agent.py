@@ -42,7 +42,7 @@ from api.utils.responses import (
 	create_websocket_response,
 	http_response,
 )
-from authorisation.jwt.create import create_token
+from api.utils.tokens import generate_claim_token
 from events.lifecycle import (
 	publish_event,
 	publish_websocket_message,
@@ -56,6 +56,7 @@ from schemas.api.responses import (
 )
 from schemas.events.core import EventType
 from security.ratelimit.policies import (
+	ResourcePolicyIdentifierType,
 	ResourcePolicyType,
 )
 from security.ratelimit.store import get_limiter
@@ -196,7 +197,7 @@ async def agent_chat_websocket(
 	# connection
 	limiter = await get_limiter(
 		policy_type=ResourcePolicyType.AGENT_MESSAGING,
-		identifier_type='user',
+		identifier_type=ResourcePolicyIdentifierType.USER,
 		identifier_value=user_id,
 	)
 	timeout = WS_MESSAGE_RATE_LIMIT_TIMEOUT_SECONDS
@@ -310,11 +311,7 @@ async def _create_user_send_event(
 	new user ID and claim token.
 	"""
 	await create_anonymous_user(user_id=user_id)
-	claim_token = create_token(
-		sub=user_id,
-		iss='mwalika-agent',
-		typ='claim',
-	)
+	claim_token = generate_claim_token(user_id=user_id)
 	ws_response = create_websocket_response(
 		request_id=generate_uuid_str(),
 		success=True,

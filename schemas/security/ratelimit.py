@@ -8,7 +8,6 @@ different API routes and resource types.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Literal
 
 from aiolimiter import AsyncLimiter
 
@@ -30,6 +29,16 @@ class ResourcePolicyType(str, Enum):
 	CLAIM_USER_COOKIE = 'claim_user_cookie'
 	AGENT_INTERACTION = 'agent_interaction'
 	AGENT_MESSAGING = 'agent_messaging'
+
+
+class ResourcePolicyIdentifierType(str, Enum):
+	"""
+	Defines the types of identifiers that can be used for rate
+	limiting, such as IP addresses or user IDs.
+	"""
+
+	IP = 'ip'
+	USER = 'user'
 
 
 # --- Policy configuration dataclass ---
@@ -59,7 +68,7 @@ class RateLimiter:
 	"""
 
 	policy_type: ResourcePolicyType
-	identifier_type: Literal['ip', 'user']
+	identifier_type: ResourcePolicyIdentifierType
 	identifier_value: str
 	limiter: AsyncLimiter
 	created_at: int = field(default_factory=get_timestamp_s)

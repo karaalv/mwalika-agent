@@ -3,25 +3,25 @@ This module contains utilities for verifying JWT
 tokens for user authorisation.
 """
 
-from os import getenv
 from typing import Any
 
 import jwt
 
 from exceptions.authorisation import JwtValidationException
 
-# --- Constants ---
-
-_JWT_SECRET = getenv('JWT_SECRET')
-
 # --- JWT verification utilities ---
 
 
-def verify_token(token: str, issuer: str, typ: str) -> dict[str, Any]:
+def verify_token(
+	token: str,
+	issuer: str,
+	typ: str,
+	secret: str,
+) -> dict[str, Any]:
 	try:
 		payload = jwt.decode(
 			token,
-			_JWT_SECRET,
+			secret,
 			algorithms=['HS256'],
 			issuer=issuer,
 			options={
@@ -42,8 +42,7 @@ def verify_token(token: str, issuer: str, typ: str) -> dict[str, Any]:
 	if payload.get('typ') != typ:
 		raise JwtValidationException('Wrong token type')
 
-	sub = payload.get('sub')
-	if not isinstance(sub, str) or not sub:
-		raise JwtValidationException('Missing subject')
+	if payload.get('iss') != issuer:
+		raise JwtValidationException('Wrong token issuer')
 
 	return payload

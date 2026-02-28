@@ -4,6 +4,8 @@ for the API system, including initialization and shutdown
 of global components.
 """
 
+from os import getenv
+
 from api.lifecycle.maintenance import (
 	start_maintenance_tasks,
 	stop_maintenance_tasks,
@@ -36,12 +38,19 @@ from security.lifecycle import (
 
 async def startup() -> None:
 	"""Starts up all necessary components for the API system."""
-	init_sentry()
-	start_websocket_registry()
-	start_event_system()
-	start_openai_client()
+	env = getenv('MWALIKA_ENV', '')
+
+	# Only initialize Sentry in non-testing
+	# environments
+	if env != 'testing':
+		init_sentry()
+
+	# Start other components
 	await start_mongodb_client()
 	start_qdrant_client()
+	start_openai_client()
+	start_websocket_registry()
+	start_event_system()
 	await start_security_system()
 	start_maintenance_tasks()
 
@@ -49,10 +58,9 @@ async def startup() -> None:
 async def shutdown() -> None:
 	"""Shuts down all components gracefully."""
 	await stop_maintenance_tasks()
-	await stop_websocket_registry()
-	await stop_event_system()
-	await close_openai_client()
-	await close_mongodb_client()
-	await close_qdrant_client()
 	await stop_security_system()
-	await stop_maintenance_tasks()
+	await stop_event_system()
+	await stop_websocket_registry()
+	await close_openai_client()
+	await close_qdrant_client()
+	await close_mongodb_client()

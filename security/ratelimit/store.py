@@ -5,13 +5,13 @@ policies across the Mwalika Agent.
 """
 
 import asyncio
-from typing import Literal
 
 from aiolimiter import AsyncLimiter
 
 from schemas.security.ratelimit import RateLimiter
 from security.ratelimit.policies import (
 	POLICY_LIMITER_CONFIG_MAPPING,
+	ResourcePolicyIdentifierType,
 	ResourcePolicyType,
 )
 
@@ -38,7 +38,7 @@ async def get_all_limiters() -> dict[str, RateLimiter]:
 
 async def get_limiter(
 	policy_type: ResourcePolicyType,
-	identifier_type: Literal['ip', 'user'],
+	identifier_type: ResourcePolicyIdentifierType,
 	identifier_value: str,
 ) -> AsyncLimiter:
 	"""
@@ -47,7 +47,11 @@ async def get_limiter(
 	This function allows API routes to easily access the correct
 	limiter for enforcing rate limits.
 	"""
-	key = f'{policy_type.value}:{identifier_type}:{identifier_value}'
+	key = (
+		f'{policy_type.value}:'
+		f'{identifier_type.value}:'
+		f'{identifier_value}'
+	)
 	async with _limiters_lock:
 		if key not in _limiters:
 			config = POLICY_LIMITER_CONFIG_MAPPING[policy_type][
@@ -70,7 +74,7 @@ async def get_limiter(
 
 async def delete_limiter(
 	policy_type: ResourcePolicyType,
-	identifier_type: Literal['ip', 'user'],
+	identifier_type: ResourcePolicyIdentifierType,
 	identifier_value: str,
 ) -> None:
 	"""
@@ -78,7 +82,11 @@ async def delete_limiter(
 	when an IP address or user is no longer active or relevant for
 	rate limiting.
 	"""
-	key = f'{policy_type.value}:{identifier_type}:{identifier_value}'
+	key = (
+		f'{policy_type.value}:'
+		f'{identifier_type.value}:'
+		f'{identifier_value}'
+	)
 	async with _limiters_lock:
 		if key in _limiters:
 			del _limiters[key]

@@ -8,7 +8,7 @@ from typing import Any
 from fastapi.responses import JSONResponse
 
 from schemas.api.responses import (
-	APIResponse,
+	HttpApiResponse,
 	MetaData,
 	WebSocketMessage,
 	WebSocketMessagePayload,
@@ -30,7 +30,7 @@ def http_response(
 	Utility function to create a standardized
 	HTTP API response.
 	"""
-	response = APIResponse(
+	response = HttpApiResponse(
 		meta=MetaData(
 			request_id=request_id,
 			success=success,

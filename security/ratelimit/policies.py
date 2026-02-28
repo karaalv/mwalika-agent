@@ -7,40 +7,70 @@ resource types.
 
 from schemas.security.ratelimit import (
 	PolicyConfig,
+	ResourcePolicyIdentifierType,
 	ResourcePolicyType,
 )
 
 # --- Policy mapping ---
 
 POLICY_LIMITER_CONFIG_MAPPING: dict[
-	ResourcePolicyType, dict[str, PolicyConfig]
+	ResourcePolicyType,
+	dict[ResourcePolicyIdentifierType, PolicyConfig],
 ] = {
 	ResourcePolicyType.SYSTEM: {
-		'ip': PolicyConfig(max_rate=500, time_period=60),
-		'user': PolicyConfig(max_rate=100, time_period=60),
+		ResourcePolicyIdentifierType.IP: PolicyConfig(
+			max_rate=500, time_period=60
+		),
+		ResourcePolicyIdentifierType.USER: PolicyConfig(
+			max_rate=100, time_period=60
+		),
 	},
 	ResourcePolicyType.API_DEPENDENCY: {
-		'ip': PolicyConfig(max_rate=300, time_period=60),
-		'user': PolicyConfig(max_rate=50, time_period=60),
+		ResourcePolicyIdentifierType.IP: PolicyConfig(
+			max_rate=500, time_period=60
+		),
+		ResourcePolicyIdentifierType.USER: PolicyConfig(
+			max_rate=30, time_period=60
+		),
 	},
 	ResourcePolicyType.REFRESH_TOKEN: {
-		'ip': PolicyConfig(max_rate=300, time_period=60),
-		'user': PolicyConfig(max_rate=10, time_period=60),
+		ResourcePolicyIdentifierType.IP: PolicyConfig(
+			max_rate=100, time_period=60
+		),
+		ResourcePolicyIdentifierType.USER: PolicyConfig(
+			max_rate=5, time_period=60
+		),
 	},
 	ResourcePolicyType.ACCESS_TOKEN: {
-		'ip': PolicyConfig(max_rate=300, time_period=60),
-		'user': PolicyConfig(max_rate=20, time_period=60),
+		ResourcePolicyIdentifierType.IP: PolicyConfig(
+			max_rate=100, time_period=60
+		),
+		ResourcePolicyIdentifierType.USER: PolicyConfig(
+			max_rate=20, time_period=60
+		),
 	},
 	ResourcePolicyType.CLAIM_USER_COOKIE: {
-		'ip': PolicyConfig(max_rate=300, time_period=60),
-		'user': PolicyConfig(max_rate=5, time_period=60),
+		ResourcePolicyIdentifierType.IP: PolicyConfig(
+			max_rate=100, time_period=60
+		),
+		ResourcePolicyIdentifierType.USER: PolicyConfig(
+			max_rate=5, time_period=60
+		),
 	},
 	ResourcePolicyType.AGENT_INTERACTION: {
-		'ip': PolicyConfig(max_rate=300, time_period=60),
-		'user': PolicyConfig(max_rate=60, time_period=60),
+		ResourcePolicyIdentifierType.IP: PolicyConfig(
+			max_rate=300, time_period=60
+		),
+		ResourcePolicyIdentifierType.USER: PolicyConfig(
+			max_rate=10, time_period=60
+		),
 	},
 	ResourcePolicyType.AGENT_MESSAGING: {
-		'ip': PolicyConfig(max_rate=500, time_period=60),
-		'user': PolicyConfig(max_rate=20, time_period=60),
+		ResourcePolicyIdentifierType.IP: PolicyConfig(
+			max_rate=500, time_period=60
+		),
+		ResourcePolicyIdentifierType.USER: PolicyConfig(
+			max_rate=20, time_period=60
+		),
 	},
 }

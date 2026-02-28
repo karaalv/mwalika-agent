@@ -46,7 +46,7 @@ class MetaData(BaseModel):
 # --- HTTP API response schema ---
 
 
-class APIResponse(BaseModel):
+class HttpApiResponse(BaseModel):
 	meta: MetaData = Field(
 		..., description='Metadata about the API response'
 	)
