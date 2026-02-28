@@ -8,6 +8,7 @@ from os import getenv
 
 from api.config.settings import (
 	ACCESS_TOKEN_EXPIRY_SECONDS,
+	FRONTEND_TOKEN_EXPIRY_SECONDS,
 	REFRESH_TOKEN_COOKIE_EXPIRY_SECONDS,
 )
 from authorisation.jwt.create import create_token
@@ -40,7 +41,7 @@ def generate_frontend_token() -> str:
 		sub='frontend',
 		iss=_TOKEN_ISS,
 		typ='frontend',
-		ttl_seconds=ACCESS_TOKEN_EXPIRY_SECONDS,
+		ttl_seconds=FRONTEND_TOKEN_EXPIRY_SECONDS,
 		secret=_get_secret('frontend'),
 	)
 	return frontend_token
@@ -143,7 +144,6 @@ def generate_claim_token(user_id: str) -> str:
 		sub=user_id,
 		iss=_TOKEN_ISS,
 		typ='claim',
-		ttl_seconds=ACCESS_TOKEN_EXPIRY_SECONDS,
 		secret=_get_secret('jwt'),
 	)
 	return claim_token

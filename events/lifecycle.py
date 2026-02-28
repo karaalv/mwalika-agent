@@ -144,8 +144,8 @@ async def publish_websocket_message(
 	)
 
 	# Add connection_id to event options if provided
+	event_options = event_options or {}
 	if connection_id:
-		event_options = event_options or {}
 		event_options['connection_id'] = connection_id
 
 	await publish_event(

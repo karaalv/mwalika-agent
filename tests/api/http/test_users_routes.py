@@ -1,5 +1,5 @@
 """
-This module contains tests for user routes in
+This module contains tests for HTTP user routes in
 the Mwalika Agent API.
 """
 

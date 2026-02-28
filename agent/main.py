@@ -102,6 +102,62 @@ async def _publish_session_update(
 	)
 
 
+async def _publish_agent_start(
+	user_id: str,
+	memory_id: str,
+	session_id: str,
+	connection_id: str | None = None,
+) -> None:
+	"""
+	Utility function to publish a WebSocket message event
+	to notify the client that an agent has started processing
+	a request.
+	"""
+	payload = {
+		'memory_id': memory_id,
+		'session_id': session_id,
+	}
+	await publish_websocket_message(
+		user_id=user_id,
+		message_type=WebSocketMessageType.AGENT_START,
+		payload=payload,
+		message=(
+			f'Agent started streaming for '
+			f'memory {memory_id} in session '
+			f'{session_id}'
+		),
+		connection_id=connection_id,
+	)
+
+
+async def _publish_agent_end(
+	user_id: str,
+	memory_id: str,
+	session_id: str,
+	connection_id: str | None = None,
+) -> None:
+	"""
+	Utility function to publish a WebSocket message event
+	to notify the client that an agent has finished processing
+	a request.
+	"""
+	payload = {
+		'memory_id': memory_id,
+		'session_id': session_id,
+	}
+	await publish_websocket_message(
+		user_id=user_id,
+		message_type=WebSocketMessageType.AGENT_END,
+		payload=payload,
+		message=(
+			f'Agent finished streaming for '
+			f'memory {memory_id} in session '
+			f'{session_id}'
+		),
+		connection_id=connection_id,
+	)
+
+
 async def _publish_agent_response(
 	user_id: str,
 	block: StreamItem,
@@ -231,6 +287,12 @@ async def agent_chat(
 			elif event.item.type == 'message':
 				# Handle message event
 				state.set_state(StreamState.MESSAGE)
+				await _publish_agent_start(
+					user_id=user_id,
+					memory_id=memory_id,
+					session_id=session_id,
+					connection_id=connection_id,
+				)
 		elif event.type == 'response.output_text.delta':
 			if state.get_state() == StreamState.MESSAGE:
 				# Handle message text delta event
@@ -288,6 +350,14 @@ async def agent_chat(
 							f' with args {tool_args}',
 							style=LogStyle.INFO,
 						)
+			elif state.get_state() == StreamState.MESSAGE:
+				# Handle message done event
+				await _publish_agent_end(
+					user_id=user_id,
+					memory_id=memory_id,
+					session_id=session_id,
+					connection_id=connection_id,
+				)
 
 	# If tool was called, execute the tool in recursive
 	# agent_chat call and stream results back to user

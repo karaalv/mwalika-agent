@@ -141,7 +141,7 @@ async def get_session_memory(
 
 
 @agent_router.websocket(
-	'/ws/chat/',
+	'/ws/chat',
 )
 async def agent_chat_websocket(
 	websocket: WebSocket,
@@ -201,11 +201,6 @@ async def agent_chat_websocket(
 		identifier_value=user_id,
 	)
 	timeout = WS_MESSAGE_RATE_LIMIT_TIMEOUT_SECONDS
-	timeout_limiter = timeout_limiter_ws(
-		limiter=limiter,
-		timeout_seconds=timeout,
-		websocket=websocket,
-	)
 
 	# Main loop to receive messages
 	try:
@@ -226,7 +221,11 @@ async def agent_chat_websocket(
 				)
 				continue
 
-			async with timeout_limiter:
+			async with timeout_limiter_ws(
+				limiter=limiter,
+				timeout_seconds=timeout,
+				websocket=websocket,
+			):
 				data = await websocket.receive_json()
 
 				# Guard against excessively large messages
@@ -252,13 +251,18 @@ async def agent_chat_websocket(
 					user_input = ws_request.payload.message
 
 					# Guard against excessively long input messages
-					await guard_agent_websocket_input_content(
+					if await guard_agent_websocket_input_content(
 						ip_address=ip_address,
 						token_id=token_id,
 						user_id=user_id,
 						connection_id=connection_id,
 						user_input=user_input,
-					)
+					):
+						# If input content guard returns True,
+						# it means the input was too long and a
+						# warning message has already been sent,
+						# so skip processing this message
+						continue
 
 					# create user if not exists, and send user ID
 					# to client for future interactions

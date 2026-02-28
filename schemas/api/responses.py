@@ -66,6 +66,8 @@ WebSocketMessagePayload = StreamItem | str | dict[str, Any]
 
 class WebSocketMessageType(str, Enum):
 	HEARTBEAT = 'heartbeat'
+	AGENT_START = 'agent_start'
+	AGENT_END = 'agent_end'
 	AGENT_RESPONSE = 'agent_response'
 	TOOL_MESSAGE = 'tool_message'
 	SET_USER_ID = 'set_user_id'

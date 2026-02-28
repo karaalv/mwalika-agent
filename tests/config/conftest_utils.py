@@ -41,6 +41,7 @@ from shared.logging import (
 	LogStyle,
 	cprint,
 )
+from tests.utils.mongodb import clear_test_databases
 
 # --- Async client setup functions ---
 
@@ -56,6 +57,10 @@ async def init_test_clients() -> None:
 	await _init_mongo_test_client()
 	await _init_qdrant_test_client()
 	await _init_openai_test_client()
+
+	# Clear test databases to ensure a
+	# clean slate for testing.
+	await clear_test_databases()
 
 
 async def _init_mongo_test_client() -> None:
@@ -117,6 +122,7 @@ async def close_test_clients() -> None:
 	This function is used in test fixtures to clean up resources
 	after tests have completed.
 	"""
+
 	await close_openai_client()
 	await close_qdrant_client()
 	await close_mongodb_client()

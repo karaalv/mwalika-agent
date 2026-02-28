@@ -174,7 +174,7 @@ async def guard_agent_websocket_input_content(
 	user_id: str,
 	connection_id: str,
 	user_input: str,
-) -> None:
+) -> bool:
 	# If input exceeds maximum length, send warning message
 	# but do not perform blocking actions
 	if len(user_input) > MAX_INPUT_LENGTH:
@@ -190,7 +190,7 @@ async def guard_agent_websocket_input_content(
 			message_type=WebSocketMessageType.WARNING,
 			success=False,
 		)
-		return
+		return True
 
 	# Perform token count checks, which may result in
 	# blocking if limits are exceeded
@@ -212,3 +212,5 @@ async def guard_agent_websocket_input_content(
 		connection_id=connection_id,
 		token_count=token_count,
 	)
+
+	return False
