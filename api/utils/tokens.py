@@ -6,6 +6,8 @@ components.
 
 from os import getenv
 
+from pydantic import BaseModel, Field
+
 from api.config.settings import (
 	ACCESS_TOKEN_EXPIRY_SECONDS,
 	FRONTEND_TOKEN_EXPIRY_SECONDS,
@@ -13,6 +15,22 @@ from api.config.settings import (
 )
 from authorisation.jwt.create import create_token
 from authorisation.jwt.verify import verify_token
+from shared.time import get_timestamp_s
+
+# --- Schemas and types ---
+
+
+class TokenResponse(BaseModel):
+	token: str = Field(..., description='The JWT token string')
+	expires_at_ms: int = Field(
+		...,
+		description=(
+			'The expiration timestamp '
+			'of the token in milliseconds '
+			'since epoch'
+		),
+	)
+
 
 # --- Constants ---
 
@@ -99,7 +117,9 @@ def verify_refresh_token(token: str) -> dict:
 # --- Access token management utilities ---
 
 
-def generate_access_token(user_id: str | None = None) -> str:
+def generate_access_token(
+	user_id: str | None = None,
+) -> TokenResponse:
 	"""
 	Generates an access token for the given user ID, which can be
 	used to authenticate API requests and manage user sessions in the
@@ -112,7 +132,15 @@ def generate_access_token(user_id: str | None = None) -> str:
 		ttl_seconds=ACCESS_TOKEN_EXPIRY_SECONDS,
 		secret=_get_secret('jwt'),
 	)
-	return access_token
+
+	# Get the expiration timestamp in milliseconds since epoch
+	expires_at_ms = (
+		get_timestamp_s() + ACCESS_TOKEN_EXPIRY_SECONDS
+	) * 1000
+	return TokenResponse(
+		token=access_token,
+		expires_at_ms=expires_at_ms,
+	)
 
 
 def verify_access_token(token: str) -> dict:

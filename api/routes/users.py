@@ -108,12 +108,15 @@ async def get_access_token(
 
 	# Create access token and scope to user if
 	# user id is in cookie
-	token = generate_access_token(user_id=user_id)
+	token_response = generate_access_token(user_id=user_id)
 	return http_response(
 		request_id=request_id,
 		success=True,
 		message='General access token generated successfully',
-		data={'access_token': token},
+		data={
+			'access_token': token_response.token,
+			'expires_at_ms': token_response.expires_at_ms,
+		},
 	)
 
 
@@ -189,12 +192,19 @@ async def claim_cookie(
 	)
 
 	# If the token is valid, set the
-	# user ID in the cookies
+	# user ID in the cookies and issue
+	# new tokens as needed
+	new_refresh_token = generate_refresh_token(user_id=user_id)
+	new_access_token_res = generate_access_token(user_id=user_id)
 
 	response = http_response(
 		request_id=request_id,
 		success=True,
 		message='User ID claimed successfully',
+		data={
+			'access_token': new_access_token_res.token,
+			'expires_at_ms': new_access_token_res.expires_at_ms,
+		},
 	)
 
 	# Set the user_id cookie
@@ -208,9 +218,6 @@ async def claim_cookie(
 		expires=USER_ID_COOKIE_EXPIRY_SECONDS,
 		domain=COOKIE_DOMAIN,
 	)
-
-	# Create new refresh token for the user
-	new_refresh_token = generate_refresh_token(user_id=user_id)
 
 	response.set_cookie(
 		key='mwalika_rt',

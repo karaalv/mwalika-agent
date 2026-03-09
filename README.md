@@ -11,7 +11,7 @@ This project forms part of a national government hackathon organised by the **Na
 The wider Mwalika system spans multiple repositories:
 
 - `mwalika-agent`: Agent logic, retrieval, orchestration, streaming
-- `mwalika-ui`: Frontend interface (React)
+- `mwalika-frontend`: Frontend interface (React)
 - `mwalika-backend`: API layer and service integrations
 - `mwalika-documentation`: Centralised design, specifications, and technical documentation
 
@@ -69,6 +69,14 @@ Mwalika operates as a general support agent for the eCitizen ecosystem. It assis
   Stores the raw collected dataset of ministries, agencies, and services. This acts as the immutable input layer for corpus processing.
 
 Each major directory contains its own `README.md` explaining its role and internal structure.
+
+## Running the Project
+
+The agent API server is run from the project using python, with the `MWALIKA_ENV` variable set to specify the environment configuration (e.g., development, staging, production):
+
+```bash
+MWALIKA_ENV=development python run.py
+```
 
 ## Licence
 

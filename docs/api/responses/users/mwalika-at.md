@@ -33,7 +33,8 @@ This endpoint is responsible for creating the general access token for a user, n
         {
             "meta": "<MetaData>",
             "data": {
-                "access_token": "<JWT>"
+                "access_token": "<JWT>",
+                "expires_at_ms": "<int>"
             }
         }
         ```

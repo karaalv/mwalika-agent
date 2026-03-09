@@ -148,7 +148,8 @@ async def test_agent_websocket_interaction_success(
 	)
 
 	# Generate an access token for the session
-	access_token = generate_access_token(user_id=user_id)
+	token_res = generate_access_token(user_id=user_id)
+	access_token = token_res.token
 
 	# Connect to the websocket endpoint with the access token
 	url = (
@@ -225,7 +226,8 @@ async def test_agent_websocket_create_user_on_interaction(
 	"""
 
 	# Generate an access token for the session
-	access_token = generate_access_token()
+	token_res = generate_access_token()
+	access_token = token_res.token
 
 	# Connect to the websocket endpoint with the access token
 	url = f'ws://{server_instance}/agent/ws/chat?access_token={access_token}'
@@ -281,7 +283,8 @@ async def test_agent_websocket_max_input_length_exceeded(
 	"""
 
 	# Generate an access token for the session
-	access_token = generate_access_token()
+	token_res = generate_access_token()
+	access_token = token_res.token
 
 	# Connect to the websocket endpoint with the access token
 	url = f'ws://{server_instance}/agent/ws/chat?access_token={access_token}'

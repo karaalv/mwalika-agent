@@ -47,8 +47,8 @@ async def test_get_refresh_token_success(http_client: AsyncClient):
 	assert response.status_code == 200
 
 	# Check cookies for the refresh token
-	assert 'mwalika_rt' in response.cookies
-	assert response.cookies['mwalika_rt'] is not None
+	cookie = response.headers.get('set-cookie', '')
+	assert 'mwalika_rt' in cookie
 
 
 async def test_get_refresh_token_failure_no_frontend_header(
@@ -88,6 +88,7 @@ async def test_get_access_token_success(http_client: AsyncClient):
 	data = http_api_response.data
 	assert data is not None
 	assert 'access_token' in data
+	assert 'expires_at_ms' in data
 
 	http_client.cookies.clear()
 
@@ -116,7 +117,8 @@ async def test_post_claim_cookie_success(http_client: AsyncClient):
 	# Generate a claim token for testing
 	test_user_id = generate_uuid_str()
 	claim_token = generate_claim_token(user_id=test_user_id)
-	access_token = generate_access_token(user_id=test_user_id)
+	token_res = generate_access_token(user_id=test_user_id)
+	access_token = token_res.token
 
 	# Make a request to the claim cookie endpoint
 	response = await http_client.post(
@@ -131,10 +133,18 @@ async def test_post_claim_cookie_success(http_client: AsyncClient):
 	assert response.status_code == 200
 
 	# Check cookies for the user ID and refresh token
-	assert 'user_id' in response.cookies
-	assert response.cookies['user_id'] == test_user_id
-	assert 'mwalika_rt' in response.cookies
-	assert response.cookies['mwalika_rt'] is not None
+	cookies = response.headers.get('set-cookie', '')
+	assert 'user_id' in cookies
+	assert 'mwalika_rt' in cookies
+
+	# Check response body for new access token
+	data = response.json()
+	http_api_response = HttpApiResponse.model_validate(data)
+	assert http_api_response.meta.success is True
+	data = http_api_response.data
+	assert data is not None
+	assert 'access_token' in data
+	assert 'expires_at_ms' in data
 
 
 async def test_post_claim_cookie_failure_invalid_access_token(

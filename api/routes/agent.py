@@ -17,6 +17,10 @@ from fastapi import (
 from agent.main import agent_chat
 from agent.memory.retrieval import retrieve_agent_memory
 from agent.sessions.deletion import delete_agent_session
+from agent.sessions.retrieval import (
+	retrieve_agent_session,
+	retrieve_agent_sessions_for_user,
+)
 from api.config.settings import (
 	WS_MESSAGE_RATE_LIMIT_TIMEOUT_SECONDS,
 )
@@ -61,6 +65,7 @@ from security.ratelimit.policies import (
 )
 from security.ratelimit.store import get_limiter
 from shared.ids import generate_uuid_str
+from shared.sanitize import scrub_string
 from users.service.creation import create_anonymous_user
 
 # --- Router setup ---
@@ -70,6 +75,76 @@ agent_router = APIRouter()
 # --- API routes ---
 
 # Session management routes
+
+
+@agent_router.get('/sessions')
+async def get_sessions_for_user(
+	request: Request,
+	payload: dict[str, Any] = Depends(  # noqa: B008
+		require_access_and_rate_limit(  # noqa: B008
+			ResourcePolicyType.AGENT_INTERACTION
+		)
+	),
+):
+	"""
+	API endpoint to retrieve all agent sessions
+	associated with the authenticated user.
+	"""
+	request_id = getattr(request.state, 'request_id', '')
+	user_id = payload.get('sub', '')
+
+	if not user_id:
+		return http_response(
+			request_id=request_id,
+			success=False,
+			message='User ID not found in token payload',
+			status_code=400,
+		)
+
+	sessions = await retrieve_agent_sessions_for_user(user_id=user_id)
+
+	return http_response(
+		request_id=request_id,
+		success=True,
+		message='Agent sessions retrieved successfully',
+		data=sessions,
+	)
+
+
+@agent_router.get('/session/{session_id}')
+async def get_session_by_id(
+	request: Request,
+	session_id: str,
+	payload: dict[str, Any] = Depends(  # noqa: B008
+		require_access_and_rate_limit(  # noqa: B008
+			ResourcePolicyType.AGENT_INTERACTION
+		)
+	),
+):
+	"""
+	API endpoint to retrieve a specific agent session
+	by its session ID. We specifically do not check that
+	the session belongs to the user here, to allow for
+	the initial retrieval of the session in the WebSocket connection
+	before the user ID is known.
+	"""
+	request_id = getattr(request.state, 'request_id', '')
+	session = await retrieve_agent_session(session_id=session_id)
+
+	if not session:
+		return http_response(
+			request_id=request_id,
+			success=False,
+			message='Agent session not found',
+			status_code=404,
+		)
+
+	return http_response(
+		request_id=request_id,
+		success=True,
+		message='Agent session retrieved successfully',
+		data=session,
+	)
 
 
 @agent_router.delete('/session/{session_id}')
@@ -278,7 +353,7 @@ async def agent_chat_websocket(
 					await agent_chat(
 						user_id=user_id,
 						session_id=session_id,
-						user_input=user_input,
+						user_input=scrub_string(user_input),
 						connection_id=connection_id,
 					)
 				else:
