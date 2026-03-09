@@ -8,6 +8,9 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from shared.ids import generate_uuid_str
+from shared.time import get_timestamp
+
 
 class StreamState(str, Enum):
 	TOOL = 'tool'
@@ -40,6 +43,20 @@ class StreamItem(BaseModel):
 		...,
 		description='Payload of the NDJSON item',
 	)
+	user_id: str = Field(
+		...,
+		description=(
+			'Unique identifier for the user '
+			'associated with this stream item'
+		),
+	)
+	session_id: str = Field(
+		...,
+		description=(
+			'Unique identifier for the '
+			'agent session this item belongs to'
+		),
+	)
 	memory_id: str = Field(
 		...,
 		description=(
@@ -51,6 +68,20 @@ class StreamItem(BaseModel):
 		description=(
 			'Sequence number of this item in the stream, used for '
 			'ordering and buffering logic'
+		),
+	)
+	stream_id: str = Field(
+		default_factory=generate_uuid_str,
+		description=(
+			'Unique identifier for this stream item, '
+			'useful for tracing and debugging purposes'
+		),
+	)
+	timestamp: str = Field(
+		default_factory=get_timestamp,
+		description=(
+			'The timestamp when this stream item was created, '
+			'useful for ordering and debugging purposes'
 		),
 	)
 

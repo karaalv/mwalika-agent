@@ -142,6 +142,8 @@ class StreamManager:
 			return StreamItem(
 				type=ndjson.type,
 				payload=ndjson.payload,
+				user_id=self.user_id,
+				session_id=self.session_id,
 				memory_id=self.memory_id,
 				sequence_number=self._set_sequence_number(),
 			)
@@ -187,6 +189,8 @@ class StreamManager:
 				block=StreamItem(
 					type=NdJsonTypes.TEXT,
 					payload=content,
+					user_id=self.user_id,
+					session_id=self.session_id,
 					memory_id=self.memory_id,
 					sequence_number=self._set_sequence_number(),
 				),
@@ -226,6 +230,8 @@ class StreamManager:
 					block=StreamItem(
 						type=NdJsonTypes.TEXT,
 						payload=pre_prefix,
+						user_id=self.user_id,
+						session_id=self.session_id,
 						memory_id=self.memory_id,
 						sequence_number=self._set_sequence_number(),
 					),
@@ -289,6 +295,8 @@ class StreamManager:
 			block=StreamItem(
 				type=NdJsonTypes.TEXT,
 				payload=delta,
+				user_id=self.user_id,
+				session_id=self.session_id,
 				memory_id=self.memory_id,
 				sequence_number=self._set_sequence_number(),
 			),
@@ -310,6 +318,8 @@ class StreamManager:
 				block=StreamItem(
 					type=NdJsonTypes.TEXT,
 					payload=remainder,
+					user_id=self.user_id,
+					session_id=self.session_id,
 					memory_id=self.memory_id,
 					sequence_number=self._set_sequence_number(),
 				),

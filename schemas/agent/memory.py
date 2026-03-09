@@ -26,6 +26,10 @@ class MemoryContent(BaseModel):
 	or other resources.
 	"""
 
+	content_id: str = Field(
+		default_factory=generate_uuid_str,
+		description='Unique identifier for the memory content item',
+	)
 	type: MemoryContentTypes = Field(
 		...,
 		description='Type of the memory content (text, image, link)',
