@@ -59,7 +59,9 @@ def _create_ws_agent_message(
 	"""
 	return WebSocketRequest(
 		type=WebSocketRequestType.AGENT_INTERACTION,
-		payload=WebSocketRequestPayload(message=message),
+		payload=WebSocketRequestPayload(
+			message=message, session_id=generate_uuid_str()
+		),
 	)
 
 
@@ -141,10 +143,13 @@ async def test_agent_websocket_interaction_success(
 	a client to interact with the agent and receive responses.
 	"""
 	user_id = generate_uuid_str()
+	session_id = generate_uuid_str()
 
 	# Create a test agent session
 	test_session = await create_agent_session(
-		user_id=user_id, user_input='Test Session'
+		user_id=user_id,
+		user_input='Test Session',
+		session_id=session_id,
 	)
 
 	# Generate an access token for the session

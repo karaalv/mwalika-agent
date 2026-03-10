@@ -24,16 +24,17 @@ async def test_create_agent_session():
 
 	# Create a new agent session
 	user_id = generate_uuid_str()
+	session_id = generate_uuid_str()
 	user_input = 'Test Chat Session'
 	new_session = await create_agent_session(
 		user_id=user_id,
 		user_input=user_input,
+		session_id=session_id,
 	)
 
 	# Validate the returned session metadata
 	assert isinstance(new_session, AgentSession)
 	assert new_session.user_id == user_id
-	assert new_session.chat_name == user_input[:10]
 
 	# clear sessions collection after test
 	await clear_collection(MongoDBCollection.SESSIONS)

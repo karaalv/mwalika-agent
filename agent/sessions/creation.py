@@ -8,7 +8,6 @@ from databases.mongodb.main import MongoDBCollection, get_collection
 from exceptions.core import ApplicationException, ErrorContext
 from schemas.agent.sessions import AgentSession
 from security.config.observers import MAX_AGENT_SESSIONS_PER_USER
-from shared.ids import generate_uuid_str
 
 # --- Constants ---
 
@@ -17,6 +16,7 @@ _INPUT_SESSION_NAME_MAX_LENGTH = 30
 
 async def create_agent_session(
 	user_id: str,
+	session_id: str,
 	user_input: str,
 ) -> AgentSession:
 	"""
@@ -46,7 +46,7 @@ async def create_agent_session(
 		)
 	sessions_collection = get_collection(MongoDBCollection.SESSIONS)
 	new_session = AgentSession(
-		session_id=generate_uuid_str(),
+		session_id=session_id,
 		user_id=user_id,
 		chat_name=user_input[:_INPUT_SESSION_NAME_MAX_LENGTH],
 	)

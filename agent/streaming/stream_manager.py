@@ -86,9 +86,9 @@ class StreamManager:
 		Constructs an AgentMemory object from the parsed
 		content items in the stream.
 		"""
-		# First flush any remaining buffer content
+		# First finalise any remaining buffer content
 		# into the content items
-		self._flush_content()
+		self._finalise_memory()
 		return AgentMemory(
 			session_id=self.session_id,
 			user_id=self.user_id,
@@ -302,39 +302,11 @@ class StreamManager:
 			),
 		)
 
-	def flush_manager(self) -> StreamParsingResponse:
+	def _finalise_memory(self) -> None:
 		"""
-		Flushes any remaining buffer content to assure
-		that all content is processed, and returns any
-		final content as needed.
-		"""
-		remainder = self.buffer.strip() + self.current_message.strip()
-		if remainder:
-			self._add_message_content(remainder)
-			self.buffer = ''
-			self.current_message = ''
-			return StreamParsingResponse(
-				code=StreamParsingCode.BUFFER,
-				block=StreamItem(
-					type=NdJsonTypes.TEXT,
-					payload=remainder,
-					user_id=self.user_id,
-					session_id=self.session_id,
-					memory_id=self.memory_id,
-					sequence_number=self._set_sequence_number(),
-				),
-			)
-		else:
-			return StreamParsingResponse(
-				code=StreamParsingCode.EMPTY,
-				block=None,
-			)
-
-	def _flush_content(self) -> None:
-		"""
-		Flushes any remaining buffer content into the
-		agent memory and returns the constructed
-		AgentMemory object.
+		Finalises the memory content by flushing any remaining
+		buffer or message content into the content items list
+		to be included in the final AgentMemory object.
 		"""
 		remainder = self.buffer.strip() + self.current_message.strip()
 		if remainder:

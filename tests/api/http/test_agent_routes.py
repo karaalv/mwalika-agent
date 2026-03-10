@@ -7,6 +7,7 @@ other agent-related functionalities.
 from httpx import AsyncClient
 
 from agent.sessions.creation import create_agent_session
+from agent.sessions.retrieval import retrieve_agent_session
 from api.utils.tokens import generate_access_token
 from databases.mongodb.main import MongoDBCollection, get_collection
 from schemas.agent.memory import AgentMemory
@@ -46,10 +47,13 @@ async def test_agent_get_memory_success(http_client: AsyncClient):
 	the agent's memory when accessed with a valid access token.
 	"""
 	user_id = generate_uuid_str()
+	session_id = generate_uuid_str()
 
 	# Create a test agent session
 	test_session = await create_agent_session(
-		user_id=user_id, user_input='Test Session'
+		user_id=user_id,
+		user_input='Test Session',
+		session_id=session_id,
 	)
 
 	# Generate an access token for the session
@@ -85,10 +89,13 @@ async def test_agent_get_session_by_id_success(
 	and access token.
 	"""
 	user_id = generate_uuid_str()
+	session_id = generate_uuid_str()
 
 	# Create a test agent session
 	test_session = await create_agent_session(
-		user_id=user_id, user_input='Test Session'
+		user_id=user_id,
+		user_input='Test Session',
+		session_id=session_id,
 	)
 
 	# Generate an access token for the session
@@ -125,11 +132,17 @@ async def test_agent_get_sessions_for_user_success(
 	user_id = generate_uuid_str()
 
 	# Create multiple test agent sessions for the user
+	session_id1 = generate_uuid_str()
+	session_id2 = generate_uuid_str()
 	session1 = await create_agent_session(
-		user_id=user_id, user_input='Session 1'
+		user_id=user_id,
+		user_input='Session 1',
+		session_id=session_id1,
 	)
 	session2 = await create_agent_session(
-		user_id=user_id, user_input='Session 2'
+		user_id=user_id,
+		user_input='Session 2',
+		session_id=session_id2,
 	)
 
 	# Generate an access token for the user
@@ -160,4 +173,92 @@ async def test_agent_get_sessions_for_user_success(
 	]
 
 	# Clean up sessions after test
+	await _clear_agent_sessions()
+
+
+async def test_agent_update_session_name_success(
+	http_client: AsyncClient,
+):
+	"""
+	Test the /agent/session/{session_id}/update-name endpoint to
+	ensure it updates the session's chat name successfully when
+	accessed with a valid session ID, access token, and new chat name.
+	"""
+	user_id = generate_uuid_str()
+	session_id = generate_uuid_str()
+
+	# Create a test agent session
+	test_session = await create_agent_session(
+		user_id=user_id,
+		user_input='Test Session',
+		session_id=session_id,
+	)
+
+	# Generate an access token for the session
+	token_res = generate_access_token(user_id=user_id)
+	access_token = token_res.token
+
+	new_chat_name = 'Updated Chat Name'
+
+	# Make a request to the update chat name endpoint
+	response = await http_client.put(
+		f'/agent/session/{test_session.session_id}/update-name',
+		headers={'Authorization': f'Bearer {access_token}'},
+		json={'new_name': new_chat_name},
+	)
+
+	assert response.status_code == 200
+	response_data = HttpApiResponse.model_validate(response.json())
+	assert response_data.meta.success is True
+
+	# Retrieve the session again to verify the chat name was updated
+	updated_session = await retrieve_agent_session(
+		session_id=session_id
+	)
+	assert updated_session is not None
+	assert updated_session.chat_name == new_chat_name
+
+	# Clean up session after test
+	await _clear_agent_sessions()
+
+
+async def test_agent_delete_session_success(
+	http_client: AsyncClient,
+):
+	"""
+	Test the /agent/session/{session_id} DELETE endpoint to
+	ensure it deletes the session successfully when accessed
+	with a valid session ID and access token.
+	"""
+	user_id = generate_uuid_str()
+	session_id = generate_uuid_str()
+
+	# Create a test agent session
+	test_session = await create_agent_session(
+		user_id=user_id,
+		user_input='Test Session',
+		session_id=session_id,
+	)
+
+	# Generate an access token for the session
+	token_res = generate_access_token(user_id=user_id)
+	access_token = token_res.token
+
+	# Make a request to the delete session endpoint
+	response = await http_client.delete(
+		f'/agent/session/{test_session.session_id}',
+		headers={'Authorization': f'Bearer {access_token}'},
+	)
+
+	assert response.status_code == 200
+	response_data = HttpApiResponse.model_validate(response.json())
+	assert response_data.meta.success is True
+
+	# Attempt to retrieve the session again to verify it was deleted
+	deleted_session = await retrieve_agent_session(
+		session_id=session_id
+	)
+	assert deleted_session is None
+
+	# Clean up any remaining sessions after test
 	await _clear_agent_sessions()

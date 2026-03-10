@@ -140,17 +140,3 @@ def test_buffer_overflow_emits_buffer_code_and_resets():
 
 	assert sm.buffer == ''
 	assert sm.parsing_block is False
-
-
-def test_flush_manager_emits_remainder():
-	sm = _make_sm()
-
-	sm.buffer = 'tail'
-
-	resp = sm.flush_manager()
-
-	assert resp is not None
-	assert resp.code == StreamParsingCode.BUFFER
-	assert resp.block is not None
-	assert resp.block.payload == 'tail'
-	assert sm.buffer == ''

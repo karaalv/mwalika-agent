@@ -21,6 +21,7 @@ from agent.sessions.retrieval import (
 	retrieve_agent_session,
 	retrieve_agent_sessions_for_user,
 )
+from agent.sessions.update import update_session_chat_name
 from api.config.settings import (
 	WS_MESSAGE_RATE_LIMIT_TIMEOUT_SECONDS,
 )
@@ -96,9 +97,12 @@ async def get_sessions_for_user(
 	if not user_id:
 		return http_response(
 			request_id=request_id,
-			success=False,
-			message='User ID not found in token payload',
-			status_code=400,
+			success=True,
+			message=(
+				'User ID not found in token payload, '
+				'assuming no sessions'
+			),
+			data=[],
 		)
 
 	sessions = await retrieve_agent_sessions_for_user(user_id=user_id)
@@ -171,6 +175,46 @@ async def delete_session(
 	)
 
 
+@agent_router.put('/session/{session_id}/update-name')
+async def update_session_name(
+	request: Request,
+	session_id: str,
+	payload: dict[str, Any] = Depends(  # noqa: B008
+		require_access_and_rate_limit(  # noqa: B008
+			ResourcePolicyType.AGENT_INTERACTION
+		)
+	),
+):
+	"""
+	API endpoint to update the chat name of an agent session.
+	This is used for display purposes in the UI.
+	"""
+	request_id = getattr(request.state, 'request_id', '')
+	new_name_raw = (await request.json()).get('new_name', '')
+
+	new_name = scrub_string(new_name_raw)
+
+	if not new_name:
+		return http_response(
+			request_id=request_id,
+			success=False,
+			message='Chat name cannot be empty',
+			status_code=400,
+		)
+
+	await update_session_chat_name(
+		session_id=session_id, chat_name=new_name
+	)
+
+	return http_response(
+		request_id=request_id,
+		success=True,
+		message=(
+			f'Chat name for session {session_id} updated successfully'
+		),
+	)
+
+
 @agent_router.get('/session/{session_id}/memory')
 async def get_session_memory(
 	request: Request,
@@ -238,7 +282,6 @@ async def agent_chat_websocket(
 	ip_address = get_ws_ip(websocket)
 	user_id = payload.get('sub', '')
 	token_id = payload.get('jti', '')
-	session_id = websocket.query_params.get('session_id')
 	connection_id = generate_uuid_str()
 	user_exists = bool(user_id)
 
@@ -324,6 +367,7 @@ async def agent_chat_websocket(
 					== WebSocketRequestType.AGENT_INTERACTION
 				):
 					user_input = ws_request.payload.message
+					session_id = ws_request.payload.session_id
 
 					# Guard against excessively long input messages
 					if await guard_agent_websocket_input_content(

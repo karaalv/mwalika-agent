@@ -15,6 +15,7 @@ from agent.memory.insertion import (
 from agent.memory.retrieval import retrieve_agent_memory_prompt
 from agent.prompts.agent import AGENT_SYSTEM_PROMPT
 from agent.sessions.creation import create_agent_session
+from agent.sessions.retrieval import retrieve_agent_session
 from agent.sessions.update import update_session_last_active
 from agent.streaming.stream_manager import (
 	StreamItem,
@@ -180,6 +181,36 @@ async def _publish_agent_response(
 	)
 
 
+async def _set_session_id_for_user(
+	user_id: str,
+	session_id: str,
+	user_input: str,
+	connection_id: str | None = None,
+) -> None:
+	"""
+	Impotently creates a new agent session for the
+	user if one does not already exist, or retrieves
+	the existing session.
+	"""
+	existing_session = await retrieve_agent_session(session_id)
+	if existing_session:
+		return
+
+	# Create session
+	await create_agent_session(
+		user_id=user_id,
+		session_id=session_id,
+		user_input=user_input,
+	)
+
+	# Send session update to client
+	await _publish_session_update(
+		user_id=user_id,
+		session_id=session_id,
+		connection_id=connection_id,
+	)
+
+
 # --- Main Agent Functionality ---
 
 # TODO: There is some issue with the agents ability
@@ -199,7 +230,7 @@ async def _publish_agent_response(
 async def agent_chat(
 	user_id: str,
 	user_input: str,
-	session_id: str | None = None,
+	session_id: str,
 	connection_id: str | None = None,
 	recursion_instructions: str | None = None,
 	recursion_depth: int = 0,
@@ -214,16 +245,12 @@ async def agent_chat(
 		_raise_recursion_limit_exceeded()
 
 	# Create chat session if does not exist
-	if not session_id:
-		new_session = await create_agent_session(user_id, user_input)
-		session_id = new_session.session_id
-		# Stream session creation event to ws
-		# for client to update session list, etc.
-		await _publish_session_update(
-			user_id=user_id,
-			session_id=session_id,
-			connection_id=connection_id,
-		)
+	await _set_session_id_for_user(
+		user_id=user_id,
+		session_id=session_id,
+		user_input=user_input,
+		connection_id=connection_id,
+	)
 
 	# Push user input to memory
 	if recursion_depth == 0:
@@ -317,23 +344,10 @@ async def agent_chat(
 					connection_id=connection_id,
 				)
 		elif event.type == 'response.output_text.done':
-			if state.get_state() == StreamState.MESSAGE:
-				# Handle message text done event
-				# Flush the stream manager buffer and return
-				# any final content as needed
-				remainder = state.flush_manager()
-				if verbosity_level > 0 and remainder:
-					cprint(
-						f'Message Remainder: {remainder.block}',
-						style=LogStyle.DEFAULT,
-					)
-				if remainder.block:
-					# Send final message update to ws
-					await _publish_agent_response(
-						user_id=user_id,
-						block=remainder.block,
-						connection_id=connection_id,
-					)
+			# Do nothing for message done event, as we will handle
+			# the end of message with the end of the 'output_item'
+			# which will be triggered after any tool calls are done
+			pass
 		elif event.type == 'response.output_item.done':
 			if state.get_state() == StreamState.TOOL:
 				# Handle tool call done event

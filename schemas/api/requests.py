@@ -35,6 +35,14 @@ class WebSocketRequestPayload(BaseModel):
 			'used for agent interactions or other purposes'
 		),
 	)
+	session_id: str = Field(
+		...,
+		description=(
+			'The unique identifier for the session associated with '
+			'the WebSocket request, used to track interactions '
+			'and maintain context'
+		),
+	)
 
 
 class WebSocketRequest(BaseModel):

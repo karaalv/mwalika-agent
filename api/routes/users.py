@@ -151,19 +151,18 @@ async def claim_cookie(
 			status_code=400,
 		)
 
-	# Verify the claim token and ensure it
-	# matches the provided user_id
-	user_id = payload.get('sub', '')
 	token_id = payload.get('jti')
 
-	if not user_id or not token_id:
+	if not token_id:
 		return http_response(
 			request_id=request_id,
 			success=False,
-			message='Invalid token payload: missing sub or jti claim',
+			message='Invalid token payload: missing jti claim',
 			status_code=401,
 		)
 
+	# Verify the claim token and ensure it
+	# matches the provided user_id
 	try:
 		payload = verify_claim_token(claim_token)
 		if payload.get('sub') != claim_user_id:
@@ -171,11 +170,6 @@ async def claim_cookie(
 				'Claim token user_id does not match provided user_id'
 			)
 
-		if user_id != claim_user_id:
-			raise ValueError(
-				'Claim token user_id does not match '
-				'authenticated user_id'
-			)
 	except Exception as e:
 		return http_response(
 			request_id=request_id,
@@ -187,15 +181,17 @@ async def claim_cookie(
 	# Guard the claiming of the user ID cookie
 	await guard_claim_cookie_generation(
 		ip_address=get_http_ip(request),
-		user_id=user_id,
+		user_id=claim_user_id,
 		token_id=token_id,
 	)
 
 	# If the token is valid, set the
 	# user ID in the cookies and issue
 	# new tokens as needed
-	new_refresh_token = generate_refresh_token(user_id=user_id)
-	new_access_token_res = generate_access_token(user_id=user_id)
+	new_refresh_token = generate_refresh_token(user_id=claim_user_id)
+	new_access_token_res = generate_access_token(
+		user_id=claim_user_id
+	)
 
 	response = http_response(
 		request_id=request_id,
@@ -210,7 +206,7 @@ async def claim_cookie(
 	# Set the user_id cookie
 	response.set_cookie(
 		key='user_id',
-		value=user_id,
+		value=claim_user_id,
 		httponly=True,
 		secure=True,
 		samesite='lax',

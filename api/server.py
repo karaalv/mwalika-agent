@@ -7,7 +7,7 @@ import os
 from contextlib import asynccontextmanager
 
 import sentry_sdk
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
@@ -86,6 +86,20 @@ async def api_exception_handler(
 			'context': exc.context.model_dump(mode='json'),
 		},
 		status_code=400,
+	)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(
+	request: Request, exc: HTTPException
+) -> JSONResponse:
+	sentry_sdk.capture_exception(exc)
+	return http_response(
+		request_id=getattr(request.state, 'request_id', ''),
+		success=False,
+		message=exc.detail,
+		data={},
+		status_code=exc.status_code,
 	)
 
 
