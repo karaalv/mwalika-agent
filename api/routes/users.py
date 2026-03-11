@@ -31,12 +31,20 @@ from api.utils.tokens import (
 	verify_claim_token,
 )
 from schemas.security.ratelimit import ResourcePolicyType
+from schemas.users.core import LanguagePreference
+from users.service.retrieval import get_anonymous_user
+from users.service.update import (
+	update_user_language_preference,
+)
 
 # --- Router setup ---
 
 users_router = APIRouter()
 
 # --- API routes ---
+
+
+# --- Token management routes ---
 
 
 @users_router.get(
@@ -226,3 +234,83 @@ async def claim_cookie(
 		domain=COOKIE_DOMAIN,
 	)
 	return response
+
+
+# --- User management routes ---
+
+
+@users_router.get('/me')
+async def get_current_user(
+	request: Request,
+	payload: dict[str, Any] = Depends(  # noqa: B008
+		require_access_and_rate_limit(  # noqa: B008
+			ResourcePolicyType.ACCESS_TOKEN
+		)
+	),
+):
+	"""
+	An endpoint to retrieve the current user's
+	information based on the access token provided.
+	"""
+	request_id = getattr(request.state, 'request_id', '')
+	user_id = payload.get('sub')
+
+	if not user_id:
+		return http_response(
+			request_id=request_id,
+			success=False,
+			message='Invalid token payload: missing sub claim',
+			status_code=401,
+		)
+
+	user = await get_anonymous_user(user_id=user_id)
+
+	if not user:
+		return http_response(
+			request_id=request_id,
+			success=False,
+			message='User not found',
+			status_code=404,
+		)
+
+	return http_response(
+		request_id=request_id,
+		success=True,
+		message='User information retrieved successfully',
+		data=user.model_dump(mode='json'),
+	)
+
+
+@users_router.patch('/language-preference/{language}')
+async def update_language_preference(
+	request: Request,
+	language: LanguagePreference,
+	payload: dict[str, Any] = Depends(  # noqa: B008
+		require_access_and_rate_limit(  # noqa: B008
+			ResourcePolicyType.ACCESS_TOKEN
+		)
+	),
+):
+	"""
+	Update the language preference for a given user.
+	"""
+	request_id = getattr(request.state, 'request_id', '')
+	user_id = payload.get('sub')
+
+	if not user_id:
+		return http_response(
+			request_id=request_id,
+			success=False,
+			message='Invalid token payload: missing sub claim',
+			status_code=401,
+		)
+
+	await update_user_language_preference(
+		user_id=user_id, language=language
+	)
+
+	return http_response(
+		request_id=request_id,
+		success=True,
+		message='Language preference updated successfully',
+	)

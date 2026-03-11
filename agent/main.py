@@ -15,6 +15,7 @@ from agent.memory.insertion import (
 )
 from agent.memory.retrieval import retrieve_agent_memory_prompt
 from agent.prompts.agent import AGENT_SYSTEM_PROMPT
+from agent.prompts.behaviour import get_agent_behaviour_prompt
 from agent.sessions.creation import create_agent_session
 from agent.sessions.retrieval import retrieve_agent_session
 from agent.sessions.update import update_session_last_active
@@ -214,14 +215,6 @@ async def _set_session_id_for_user(
 
 # --- Main Agent Functionality ---
 
-# TODO: There is some issue with the agents ability
-# to cohesively carry a conversation across multiple turns,
-# especially when tools are involved. Need to investigate
-# whether this is an issue with the way memory is being
-# retrieved and included in the system prompt, or if there
-# is some other issue with the way the agent is processing
-# the conversation history and tool calls.
-
 
 @guard(
 	operation='agent_chat',
@@ -271,11 +264,16 @@ async def agent_chat(
 		user_id=user_id,
 	)
 
+	# Fetch user-specific behaviour instructions for agent
+	behaviour_prompt = await get_agent_behaviour_prompt(user_id)
+
 	# Handle processing agent system prompt with
 	# memory and any recursion instructions
 	agent_system_prompt = (
 		AGENT_SYSTEM_PROMPT
-		+ '\n\nRelevant Memory:\n'
+		+ '\n\n'
+		+ behaviour_prompt
+		+ '\n\n'
 		+ memory_prompt
 		+ '\n\n'
 		+ (recursion_instructions or '')

@@ -11,17 +11,40 @@ from api.utils.tokens import (
 	generate_frontend_token,
 	generate_refresh_token,
 )
+from databases.mongodb.main import MongoDBCollection, get_collection
 from schemas.api.responses import HttpApiResponse
 from schemas.security.ratelimit import (
 	ResourcePolicyIdentifierType,
 	ResourcePolicyType,
 )
+from schemas.users.core import AnonymousUser, LanguagePreference
 from security.config.observers import MAX_PER_MINUTE_REQUESTS_PER_RT
 from security.ratelimit.policies import POLICY_LIMITER_CONFIG_MAPPING
 from shared.ids import generate_uuid_str
 from tests.utils.generate_data import gen_test_ip
+from users.service.creation import create_anonymous_user
+from users.service.retrieval import get_anonymous_user
+
+# --- Test helpers ---
 
 # --- Test cases for user routes ---
+
+
+async def _create_test_user() -> AnonymousUser:
+	"""
+	Helper function to create a test anonymous user for use in tests.
+	"""
+	test_user_id = generate_uuid_str()
+	return await create_anonymous_user(user_id=test_user_id)
+
+
+async def _clear_users_collection():
+	"""
+	Helper function to clear the users collection in the database
+	before running tests to ensure a clean state.
+	"""
+	users_collection = get_collection(MongoDBCollection.USERS)
+	await users_collection.delete_many({})
 
 
 # Route functionality tests
@@ -232,3 +255,37 @@ async def test_get_access_token_blocked(
 	assert response.status_code == 403
 
 	http_client.cookies.clear()
+
+
+async def test_update_language_preference_success(
+	http_client: AsyncClient,
+):
+	"""
+	Test the /language-preference/{language} endpoint to ensure it
+	successfully updates the user's language preference when a valid
+	language is provided.
+	"""
+
+	# Create a test user and get an access token for them
+	test_user = await _create_test_user()
+	token_res = generate_access_token(user_id=test_user.user_id)
+	access_token = token_res.token
+
+	# Make a request to update the language preference
+	response = await http_client.patch(
+		f'/users/language-preference/{LanguagePreference.SWAHILI.value}',
+		headers={'Authorization': f'Bearer {access_token}'},
+	)
+
+	assert response.status_code == 200
+
+	# Retrieve the user from the database and check the
+	# language preference
+	updated_user = await get_anonymous_user(user_id=test_user.user_id)
+	assert updated_user is not None
+	assert (
+		updated_user.language_preference == LanguagePreference.SWAHILI
+	)
+
+	# Clean up users collection after test
+	await _clear_users_collection()
