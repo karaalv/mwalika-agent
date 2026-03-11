@@ -83,8 +83,8 @@ async def create_embedding(
 async def normal_response(
 	system_prompt: str,
 	user_input: str,
-	model: str = 'gpt-5-mini',
-	effort: Literal['minimal', 'low', 'medium', 'high'] = 'medium',
+	model: str = 'gpt-5-nano',
+	effort: Literal['minimal', 'low', 'medium', 'high'] = 'low',
 	verbosity: Literal['low', 'medium', 'high'] = 'medium',
 ) -> str:
 	"""
@@ -230,7 +230,7 @@ async def agent_response_stream(
 	user_input: str,
 	tools: list[ToolParam],
 	model: str = 'gpt-5-mini',
-	effort: Literal['minimal', 'low', 'medium', 'high'] = 'medium',
+	effort: Literal['minimal', 'low', 'medium', 'high'] = 'low',
 	verbosity: Literal['low', 'medium', 'high'] = 'medium',
 ) -> AsyncStream[ResponseStreamEvent]:
 	"""

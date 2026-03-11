@@ -78,6 +78,22 @@ The agent API server is run from the project using python, with the `MWALIKA_ENV
 MWALIKA_ENV=development python run.py
 ```
 
+## Testing
+
+Unit and integration tests are located in the `tests/` directory. To run the test suite, use:
+
+```bash
+pytest tests/
+```
+
+To test the agent input via the terminal, you can use the `agent_input.py` script in the test agent module:
+
+```bash
+python -m tests.agent.agent_input | tee test_logs.log
+```
+
+It is recommended to use the `test_logs.log` file to review the full interaction logs, especially for streaming responses.
+
 ## Licence
 
 This project is licensed under the **Apache License 2.0**.

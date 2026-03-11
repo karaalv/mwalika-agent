@@ -198,7 +198,7 @@ class StreamManager:
 				),
 			)
 
-		if self.verbosity_level > 0:
+		if self.verbosity_level > 1:
 			cprint(
 				f'current delta: {delta}\n'
 				f'Current buffer: {self.buffer}\n'

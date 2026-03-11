@@ -103,6 +103,7 @@ async def main():
 			if user_input.lower() in ['exit', 'quit']:
 				cprint('Exiting...', style=LogStyle.INFO)
 				break
+			print(f'[USER]: {user_input}')
 			await agent_chat(
 				user_id='test_user',
 				session_id='test_chat',

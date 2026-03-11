@@ -82,10 +82,10 @@ async def form_department_context(
 		ministry_context
 		+ '\n\n'
 		+ dedent(f"""
-        --- Department Information ---
-        Department Name: {department_entry.department_name}
-        eCitizen Link: {department_entry.ministry_departments_url}
-    """).strip()
+		--- Department Information ---
+		Department Name: {department_entry.department_name}
+		eCitizen Link: {department_entry.ministry_departments_url}
+		""").strip()
 	)
 
 
@@ -115,7 +115,7 @@ async def form_agency_context(agency_entry: AgencyEntry) -> str:
 		{agency_entry.ministry_departments_agencies_url}
         Logo URL: {agency_entry.logo_url}
         Agency Page URL: {agency_entry.agency_url}
-    """).strip()
+		""").strip()
 	)
 
 
@@ -135,9 +135,9 @@ async def form_service_context(service_entry: ServiceEntry) -> str:
 		agency_context
 		+ '\n\n'
 		+ dedent(f"""
-        --- Service Information ---
-        Service Name: {service_entry.service_name}
-        Description: {description}
-        eCitizen Link: {service_entry.service_url}
-    """).strip()
+		--- Service Information ---
+		Service Name: {service_entry.service_name}
+		Description: {description}
+		eCitizen Link: {service_entry.service_url}
+		""").strip()
 	)

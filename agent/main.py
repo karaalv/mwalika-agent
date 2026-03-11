@@ -6,6 +6,7 @@ system.
 
 import json
 from textwrap import dedent
+from time import perf_counter
 from typing import Any
 
 from agent.memory.insertion import (
@@ -235,12 +236,16 @@ async def agent_chat(
 	recursion_instructions: str | None = None,
 	recursion_depth: int = 0,
 	verbosity_level: int = 0,
-):
+	agent_start_time: float | None = None,
+	tool_duration: float = 0.0,
+) -> None:
 	"""
 	Main function to handle agent chat interactions.
 	It takes user input and streams responses from the
 	OpenAI API, including tool calls and outputs.
 	"""
+	agent_start_time = agent_start_time or perf_counter()
+
 	if recursion_depth > _RECURSION_LIMIT:
 		_raise_recursion_limit_exceeded()
 
@@ -265,11 +270,6 @@ async def agent_chat(
 		session_id=session_id,
 		user_id=user_id,
 	)
-	if verbosity_level > 0:
-		cprint(
-			f'Memory Prompt: {memory_prompt}',
-			style=LogStyle.DEFAULT,
-		)
 
 	# Handle processing agent system prompt with
 	# memory and any recursion instructions
@@ -281,6 +281,16 @@ async def agent_chat(
 		+ (recursion_instructions or '')
 	)
 
+	if verbosity_level > 0:
+		cprint(
+			f'Memory Prompt:\n\n{memory_prompt}',
+			style=LogStyle.DEFAULT,
+		)
+		cprint(
+			f'Recursion Prompt:\n\n{recursion_instructions}',
+			style=LogStyle.DEFAULT,
+		)
+
 	# Create response stream for agent, maintaining
 	# stream state for processing events and tool calls
 	memory_id = generate_uuid_str()
@@ -290,11 +300,25 @@ async def agent_chat(
 		memory_id=memory_id,
 		verbosity_level=verbosity_level,
 	)
+	agent_request_start_time = perf_counter()
+
 	response_stream = await agent_response_stream(
 		system_prompt=agent_system_prompt,
 		user_input=user_input,
 		tools=TOOL_DEFINITIONS,
 	)
+
+	if verbosity_level > 0:
+		response_stream_latency = (
+			perf_counter() - agent_request_start_time
+		)
+		cprint(
+			f'Agent response stream initialized in '
+			f'{response_stream_latency:.2f} seconds.',
+			style=LogStyle.INFO,
+		)
+
+	stream_start_time = perf_counter()
 
 	# Handle streaming events, including
 	# tool calls and outputs, and send responses
@@ -373,9 +397,19 @@ async def agent_chat(
 					connection_id=connection_id,
 				)
 
+	stream_duration = perf_counter() - stream_start_time
+	if verbosity_level > 0:
+		cprint(
+			f'Agent response stream '
+			f'completed in {stream_duration:.2f} '
+			f'seconds. (depth={recursion_depth})',
+			style=LogStyle.SUCCESS,
+		)
+
 	# If tool was called, execute the tool in recursive
 	# agent_chat call and stream results back to user
 	if state.get_state() == StreamState.TOOL and state.tool_name:
+		tool_start_time = perf_counter()
 		tool_response = await _resolve_tool_call(
 			user_id=user_id,
 			tool_name=state.tool_name,
@@ -383,7 +417,15 @@ async def agent_chat(
 			user_input=user_input,
 			connection_id=connection_id,
 		)
+		tool_duration = perf_counter() - tool_start_time
+
 		if verbosity_level > 0:
+			cprint(
+				f'Tool Resolution Duration: '
+				f'{tool_duration:.2f}s '
+				f'for {state.tool_name}',
+				style=LogStyle.INFO,
+			)
 			cprint(
 				f'Tool Response:\n\n{tool_response}',
 				style=LogStyle.INFO,
@@ -397,6 +439,8 @@ async def agent_chat(
 			recursion_instructions=tool_response,
 			recursion_depth=recursion_depth + 1,
 			verbosity_level=verbosity_level,
+			agent_start_time=agent_start_time,
+			tool_duration=tool_duration,
 		)
 
 	# Insert memory into database with session_id,
@@ -414,3 +458,12 @@ async def agent_chat(
 	await update_user_last_active(user_id=user_id)
 
 	state.clear_state()
+
+	total_duration = perf_counter() - agent_start_time
+	if verbosity_level > 0:
+		cprint(
+			f'Agent chat completed in {total_duration:.2f} seconds '
+			f'(tool: {tool_duration:.2f}s) '
+			f'at recursion depth {recursion_depth}.',
+			style=LogStyle.SUCCESS,
+		)
