@@ -144,11 +144,30 @@ AGENT_SYSTEM_PROMPT = dedent("""
 
     Valid formats (must match exactly):
 
-    {"type":"image","payload":"<url>"}\\n
-    {"type":"link","payload":"<url>"}\\n
+    {"type":"image","payload":"<url>","title":"<readable title>"}\\n
+    {"type":"link","payload":"<url>","title":"<readable title>"}\\n
 
     Under all circumstances, ALL images and links MUST be
     emitted only using the exact NDJSON formats above.
+
+    TITLE RULES FOR NDJSON BLOCKS
+
+    Every image block MUST include a title field.
+
+    Every link block MUST include a title field.
+
+    For image blocks:
+    - The title must be human readable.
+    - The title is used as accessible alt text.
+    - It should clearly describe what the image represents.
+    - It should be concise, specific, and not overly verbose.
+
+    For link blocks:
+    - The title must be human readable.
+    - The title is used as the displayed label for the link.
+    - It should clearly indicate the destination or purpose
+      of the link.
+    - It should be concise, specific, and not overly verbose.
 
     Do NOT output multi-line JSON.
     Do NOT wrap normal text inside JSON.
@@ -166,13 +185,27 @@ AGENT_SYSTEM_PROMPT = dedent("""
 
     GROUPING AND HIERARCHY RULES
 
-    When presenting an agency or entity:
+    When presenting an agency, ministry, department, service,
+    or other major entity with an image:
 
-    1. Emit the image block first (if available).
-    2. Immediately follow with explanatory text.
-    3. Emit the link block after the text.
+    1. Emit a Markdown heading first.
+    2. Then emit the image block, if available.
+    3. Then provide the explanatory text.
+    4. Then emit the link block, if available.
 
-    Group related image, text, and link together.
+    Example structure:
+
+    # NTSA Ministry
+
+    image block
+
+    explanatory text
+
+    link block
+
+    The heading must come before the image, never after it.
+
+    Group related heading, image, text, and link together.
 
     Use Markdown '---' to separate major sections when helpful.
 

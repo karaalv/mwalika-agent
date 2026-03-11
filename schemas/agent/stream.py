@@ -32,6 +32,13 @@ class NdJsonItem(BaseModel):
 		...,
 		description='Payload of the NDJSON item',
 	)
+	title: str = Field(
+		...,
+		description=(
+			'Human-readable title for the NDJSON item, '
+			'used for display purposes'
+		),
+	)
 
 
 class StreamItem(BaseModel):
@@ -42,6 +49,13 @@ class StreamItem(BaseModel):
 	payload: str = Field(
 		...,
 		description='Payload of the NDJSON item',
+	)
+	title: str | None = Field(
+		default=None,
+		description=(
+			'Human-readable title for the NDJSON item, '
+			'used for display purposes (optional for text items)'
+		),
 	)
 	user_id: str = Field(
 		...,

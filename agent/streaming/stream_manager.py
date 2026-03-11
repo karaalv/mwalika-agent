@@ -121,6 +121,7 @@ class StreamManager:
 			MemoryContent(
 				type=content_type,
 				payload=item.payload,
+				title=item.title,
 			)
 		)
 
@@ -142,6 +143,7 @@ class StreamManager:
 			return StreamItem(
 				type=ndjson.type,
 				payload=ndjson.payload,
+				title=ndjson.title,
 				user_id=self.user_id,
 				session_id=self.session_id,
 				memory_id=self.memory_id,

@@ -38,6 +38,13 @@ class MemoryContent(BaseModel):
 		...,
 		description='The actual content value (text or URL)',
 	)
+	title: str | None = Field(
+		default=None,
+		description=(
+			'Human-readable title for the content item, '
+			'used for display purposes (optional for text items)'
+		),
+	)
 
 
 class AgentMemory(BaseModel):

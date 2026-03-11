@@ -53,7 +53,7 @@ def test_passthrough_delta():
 def test_ndjson_block_single_chunk():
 	sm = _make_sm()
 
-	line = '{"type":"link","payload":"https://x"}\n'
+	line = '{"type":"link","payload":"https://x", "title":"Example Link"}\n'  # noqa: E501
 
 	resp = sm.add_delta(line)
 
@@ -61,17 +61,19 @@ def test_ndjson_block_single_chunk():
 	assert resp.block is not None
 	assert resp.block.type == NdJsonTypes.LINK
 	assert resp.block.payload == 'https://x'
+	assert resp.block.title == 'Example Link'
 
 	mem = sm.get_agent_memory()
 	assert len(mem.content) == 1
 	assert mem.content[0].payload == 'https://x'
+	assert mem.content[0].title == 'Example Link'
 
 
 def test_ndjson_block_split_across_chunks():
 	sm = _make_sm()
 
 	part1 = '{"type":"image","payload":"https://i'
-	part2 = 'mg"}\n'
+	part2 = 'mg", "title":"Example Image"}\n'
 
 	resp1 = sm.add_delta(part1)
 	assert resp1.code == StreamParsingCode.EMPTY
@@ -82,11 +84,13 @@ def test_ndjson_block_split_across_chunks():
 	assert resp2.block is not None
 	assert resp2.block.type == NdJsonTypes.IMAGE
 	assert resp2.block.payload == 'https://img'
+	assert resp2.block.title == 'Example Image'
 
 	mem = sm.get_agent_memory()
 	assert len(mem.content) == 1
 	assert mem.content[0].type == MemoryContentTypes.IMAGE
 	assert mem.content[0].payload == 'https://img'
+	assert mem.content[0].title == 'Example Image'
 
 
 def test_block_flushes_prior_text():
@@ -95,7 +99,7 @@ def test_block_flushes_prior_text():
 	resp1 = sm.add_delta('Before block. ')
 	assert resp1.code == StreamParsingCode.PASSTHROUGH
 
-	line = '{"type":"link","payload":"https://x"}\n'
+	line = '{"type":"link","payload":"https://x", "title":"Example Link"}\n'  # noqa: E501
 	resp2 = sm.add_delta(line)
 
 	assert resp2.code == StreamParsingCode.BLOCK
@@ -108,6 +112,7 @@ def test_block_flushes_prior_text():
 
 	assert mem.content[1].type == MemoryContentTypes.LINK
 	assert mem.content[1].payload == 'https://x'
+	assert mem.content[1].title == 'Example Link'
 
 
 def test_invalid_ndjson_clears_buffer_and_returns_empty():
