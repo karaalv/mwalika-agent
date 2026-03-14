@@ -1,0 +1,37 @@
+# Workflow when pushing to the
+# main branch
+# 1. Run tests
+name: Push to Main
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore .env.test file
+        run: |
+          echo "$ENV_CONTENT" > .env.test
+        env:
+          ENV_CONTENT: ${{ secrets.ENV_TEST_FILE }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest

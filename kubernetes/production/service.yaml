@@ -1,0 +1,13 @@
+# Mwalika Agent Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mwalika-agent-production
+spec:
+  type: NodePort
+  selector:
+    app: mwalika-agent-production
+  ports:
+    - port: 80           # Internal service port
+      targetPort: 3001   # Pod/container port
+      nodePort: 30001    # NodePort (external port on EC2)

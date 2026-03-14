@@ -82,3 +82,15 @@ def check_environment() -> None:
 		raise RuntimeError(
 			'FRONTEND_SECRET environment variable must be set.'
 		)
+
+	cookie_domain = os.getenv('COOKIE_DOMAIN')
+	if not cookie_domain:
+		raise RuntimeError(
+			'COOKIE_DOMAIN environment variable must be set.'
+		)
+
+	cors_origins = os.getenv('CORS_ORIGINS')
+	if not cors_origins:
+		raise RuntimeError(
+			'CORS_ORIGINS environment variable must be set.'
+		)

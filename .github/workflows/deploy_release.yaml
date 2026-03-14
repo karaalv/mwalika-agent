@@ -1,0 +1,96 @@
+# Workflow when deploying a new release,
+# this pushes the code change to production
+# 1. Run tests
+# 2. Build and push Docker image
+# 3. Deploy to production environment
+name: Deploy Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+    id-token: write
+    contents: read
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout code
+            uses: actions/checkout@v4
+
+          - name: Restore .env.test file
+            run: |
+              echo "$ENV_CONTENT" > .env.test
+            env:
+              ENV_CONTENT: ${{ secrets.ENV_TEST_FILE }}
+
+          - name: Set up Python
+            uses: actions/setup-python@v5
+            with:
+              python-version: '3.12'
+
+          - name: Install dependencies
+            run: |
+                python -m pip install --upgrade pip
+                pip install -r requirements.txt
+
+          - name: Run tests
+            run: pytest
+
+    build_and_push:
+        needs: test
+        runs-on: ubuntu-latest
+        steps:
+            - name: Configure AWS credentials via OIDC
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+                aws-region: ${{ vars.AWS_REGION }}
+
+            - name: Trigger CodeBuild and wait
+              uses: aws-actions/aws-codebuild-run-build@v1
+              with:
+                project-name: mwalika-arm-docker-build
+                disable-source-override: false
+                source-type-override: NO_SOURCE
+                env-vars-for-codebuild: |
+                    MWALIKA_SERVICE,
+                    BUCKET_NAME,
+                    SCRIPT_LOCATION,
+                    GIT_BRANCH
+              env:
+                MWALIKA_SERVICE: ${{ vars.SERVICE_NAME }}
+                BUCKET_NAME: ${{ vars.SCRIPT_BUCKET }}
+                SCRIPT_LOCATION: ${{ vars.BUILD_SCRIPT_LOCATION }}
+                GIT_BRANCH: main
+
+    deploy_release:
+        needs: build_and_push
+        runs-on: ubuntu-latest
+        environment:
+            name: production
+            url: https://agent.mwalika.com
+        steps:
+            - name: Configure AWS credentials via OIDC
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+                aws-region: ${{ vars.AWS_REGION }}
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                python-version: '3.12'
+
+            - name: Run script on EC2
+              uses: saraiTech/aws-ec2-run-script@v1
+              with:
+                instance-name: ${{ vars.INSTANCE_NAME }}
+                bucket-name: ${{ vars.SCRIPT_BUCKET }}
+                script-location: ${{ vars.DEPLOY_SCRIPT_LOCATION }}
+                env-vars-for-script: |
+                  GIT_BRANCH=main
+                  MWALIKA_SERVICE=${{ vars.SERVICE_NAME }}

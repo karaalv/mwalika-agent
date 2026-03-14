@@ -1,5 +1,7 @@
 # Mwalika: Agentic AI System for eCitizen Platform
 
+**Resource Version**: `1.0.0`
+
 This repository contains the core agent engine for **Mwalika**, an AI-powered interface designed to enhance Kenya’s eCitizen platform.
 
 Mwalika enables citizens to interact with government services through a conversational, intent-driven system rather than manually navigating complex service flows.
@@ -12,7 +14,6 @@ The wider Mwalika system spans multiple repositories:
 
 - `mwalika-agent`: Agent logic, retrieval, orchestration, streaming
 - `mwalika-frontend`: Frontend interface (React)
-- `mwalika-backend`: API layer and service integrations
 - `mwalika-documentation`: Centralised design, specifications, and technical documentation
 
 The documentation repository acts as the single source of truth for architecture decisions, methodology, and system design.

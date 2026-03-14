@@ -1,0 +1,52 @@
+# Environment files
+**/.env
+**/.env.*
+
+# Keys
+keys/
+
+# Git files
+**/.git
+**/.gitignore
+
+# Docker files
+**/Dockerfile
+**/docker-compose.yml
+**/.dockerignore
+
+# Visual Studio Code files
+**/.vscode
+**/.vscode/*
+
+# Logs
+**/*.log
+**/*.tmp
+
+# System files
+**/.DS_Store
+**/Thumbs.db
+**/Desktop.ini
+**/~
+
+# Python bytecode
+**/__pycache__/
+**.py[cod]
+
+# Python test files
+.pytest_cache/
+
+# Virtual environment
+**/venv/
+
+# Test files
+**/test/
+**/tests/
+
+# Kubernetes files
+**/kubernetes/
+
+# Markdown files
+**/*.md
+
+# Ruff
+.ruff_cache/

@@ -52,6 +52,7 @@ async def _clear_agent_memory():
 
 def _create_ws_agent_message(
 	message: str,
+	session_id: str | None = None,
 ) -> WebSocketRequest:
 	"""
 	Utility function to create a WebSocketRequest message for testing
@@ -60,7 +61,8 @@ def _create_ws_agent_message(
 	return WebSocketRequest(
 		type=WebSocketRequestType.AGENT_INTERACTION,
 		payload=WebSocketRequestPayload(
-			message=message, session_id=generate_uuid_str()
+			message=message,
+			session_id=session_id or generate_uuid_str(),
 		),
 	)
 
@@ -167,7 +169,8 @@ async def test_agent_websocket_interaction_success(
 	) as ws:
 		# Send a test interaction message
 		interaction_message = _create_ws_agent_message(
-			'Hello, Agent!'
+			message='Hello, Agent!',
+			session_id=test_session.session_id,
 		)
 		await ws.send(interaction_message.model_dump_json())
 
