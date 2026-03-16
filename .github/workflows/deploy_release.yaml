@@ -48,7 +48,7 @@ jobs:
               uses: aws-actions/configure-aws-credentials@v4
               with:
                 role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
-                aws-region: ${{ vars.AWS_REGION }}
+                aws-region: 'us-east-1'
 
             - name: Trigger CodeBuild and wait
               uses: aws-actions/aws-codebuild-run-build@v1
