@@ -72,6 +72,7 @@ class WebSocketMessageType(str, Enum):
 	TOOL_MESSAGE = 'tool_message'
 	SET_USER_ID = 'set_user_id'
 	SET_SESSION_ID = 'set_session_id'
+	REQUEST_FEEDBACK = 'request_feedback'
 	WARNING = 'warning'
 	ERROR = 'error'
 

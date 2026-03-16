@@ -132,7 +132,7 @@ async def _send_corpus_lookup_ws_message(
 		user_id=user_id,
 		tool_name='corpus_lookup',
 		titles=[
-			'Performing corpus lookup',
+			'Searching government information',
 			filter_title,
 			query_title,
 		],

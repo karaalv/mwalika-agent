@@ -21,6 +21,27 @@ class LanguagePreference(str, Enum):
 	SWAHILI = 'swahili'
 
 
+class FeedbackPromptState(BaseModel):
+	"""
+	Represents the state of feedback prompting
+	for an anonymous user, containing timestamps
+	for prompt events and eligibility.
+	"""
+
+	last_prompted_at_s: int | None = Field(
+		default=None,
+	)
+	last_submitted_at_s: int | None = Field(
+		default=None,
+	)
+	request_count: int = Field(
+		default=0,
+	)
+	next_eligible_prompt_at_s: int | None = Field(
+		default=None,
+	)
+
+
 class AnonymousUser(BaseModel):
 	"""
 	Represents an anonymous user in the
@@ -57,5 +78,14 @@ class AnonymousUser(BaseModel):
 			'which can be used to determine if the user is still '
 			'active or if their data should be cleaned up after a '
 			'certain period'
+		),
+	)
+	feedback_prompt_state: FeedbackPromptState | None = Field(
+		default=None,
+		description=(
+			'The state of feedback prompting for the '
+			'user, which can be used to determine when '
+			'to trigger feedback forms and manage user '
+			'experience around feedback collection'
 		),
 	)

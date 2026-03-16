@@ -21,6 +21,7 @@ class MongoDBDatabase(str, Enum):
 	CHATS = 'chats'
 	MWALIKA_IDENTITY = 'mwalika_identity'
 	MWALIKA_SECURITY = 'mwalika_security'
+	MWALIKA_METRICS = 'mwalika_metrics'
 
 
 class MongoDBCollection(str, Enum):
@@ -42,6 +43,10 @@ class MongoDBCollection(str, Enum):
 	USER_USAGE_STATS = 'user_usage_stats'
 	IP_USAGE_STATS = 'ip_usage_stats'
 	BLOCKED_ENTITIES = 'blocked_entities'
+
+	# Collections for Mwalika Metrics database
+	USER_FEEDBACK = 'user_feedback'
+	SYSTEM_METRICS = 'system_metrics'
 
 
 # Mapping between collection and
@@ -68,6 +73,9 @@ _collection_map: dict[MongoDBCollection, MongoDBDatabase] = {
 	MongoDBCollection.BLOCKED_ENTITIES: (
 		MongoDBDatabase.MWALIKA_SECURITY
 	),
+	# Mwalika Metrics database
+	MongoDBCollection.USER_FEEDBACK: MongoDBDatabase.MWALIKA_METRICS,
+	MongoDBCollection.SYSTEM_METRICS: MongoDBDatabase.MWALIKA_METRICS,
 }
 
 # --- Collection Access ---

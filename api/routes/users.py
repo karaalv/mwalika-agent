@@ -30,8 +30,10 @@ from api.utils.tokens import (
 	generate_refresh_token,
 	verify_claim_token,
 )
+from google_client.hooks.sheets import add_feedback_to_sheet
 from schemas.security.ratelimit import ResourcePolicyType
 from schemas.users.core import LanguagePreference
+from users.feedback.submission import submit_feedback
 from users.service.retrieval import get_anonymous_user
 from users.service.update import (
 	update_user_language_preference,
@@ -313,4 +315,60 @@ async def update_language_preference(
 		request_id=request_id,
 		success=True,
 		message='Language preference updated successfully',
+	)
+
+
+# --- Feedback routes ---
+
+
+@users_router.post('/feedback')
+async def submit_user_feedback(
+	request: Request,
+	payload: dict[str, Any] = Depends(  # noqa: B008
+		require_access_and_rate_limit(  # noqa: B008
+			ResourcePolicyType.ACCESS_TOKEN
+		)
+	),
+):
+	"""
+	An endpoint to handle the submission of user feedback.
+	This includes validating the input, saving the feedback to the
+	database, and updating the user's feedback prompt state.
+	"""
+	request_id = getattr(request.state, 'request_id', '')
+	user_id = payload.get('sub')
+
+	if not user_id:
+		return http_response(
+			request_id=request_id,
+			success=False,
+			message='Invalid token payload: missing sub claim',
+			status_code=401,
+		)
+
+	request_body: dict = await request.json()
+
+	if not request_body:
+		return http_response(
+			request_id=request_id,
+			success=False,
+			message='Request body is required',
+			status_code=400,
+		)
+
+	# Record the feedback submission in
+	# the database and update user feedback
+	# prompt state
+	feedback = await submit_feedback(
+		user_id=user_id,
+		request_body=request_body,
+	)
+
+	add_feedback_to_sheet(feedback)
+
+	return http_response(
+		request_id=request_id,
+		success=True,
+		message='Feedback submitted successfully',
+		status_code=201,
 	)

@@ -96,10 +96,14 @@ mongodb
 ├── Database: mwalika_identity
 │   └── Collection: users
 │
-└── Database: mwalika_security
-    ├── Collection: user_usage_stats
-    ├── Collection: ip_usage_stats
-    └── Collection: blocked_entities
+├── Database: mwalika_security
+│   ├── Collection: user_usage_stats
+│   ├── Collection: ip_usage_stats
+│   └── Collection: blocked_entities
+│
+└── Database: mwalika_metrics
+    ├── Collection: user_feedback
+    └── Collection: system_metrics
 ```
 
 Indexes may be added as performance requirements evolve.
@@ -184,11 +188,26 @@ The `mwalika_identity` database stores user-related data for the anonymous user 
 Stores information about anonymous users.
 
 ```typescript
+enum LanguagePreference {
+    ENGLISH = 'english',
+    SWAHILI = 'swahili'
+}
+
+// All timestamps are stored as
+// seconds since epoch for simplicity
+// in calculations
+interface FeedbackPromptState {
+    last_prompted_at: int | null;
+    last_submitted_at: int | null;
+    next_eligible_prompt_at: int | null;
+}
+
 interface AnonymousUser {
     user_id: string;
-    language_preference: 'english' | 'swahili';
+    language_preference: LanguagePreference;
     created_at: string;      // ISO 8601 (UTC)
     last_active_at: string;  // ISO 8601 (UTC)
+    feedback_prompt_state: FeedbackPromptState | null;
 }
 ```
 
@@ -249,6 +268,79 @@ interface BlockedEntity {
     blocked_until: int; // Seconds since epoch when the block expires
 }
 ```
+
+### 3.5 Database: mwalika_metrics
+
+The `mwalika_metrics` database stores data related to user feedback and system performance metrics.
+
+#### Collection: user_feedback
+
+Stores feedback submitted by users about their interactions with the agent.
+
+```typescript
+
+enum PromptSource {
+    AGENT = 'agent',
+    USER_TRIGGERED = 'user_triggered',
+}
+
+enum IntendedServiceCategory {
+    KRA = 'kra',
+    NTSA = 'ntsa',
+    BRS = 'brs',
+    OTHER = 'other'
+}
+
+enum ServiceMatchQuality {
+    YES = 'yes',
+    PARTLY = 'partly',
+    NO = 'no',
+}
+
+enum WhatHelped {
+    FOUND_SERVICE = 'found_service',
+    SAVED_TIME = 'saved_time',
+    CLARITY = 'clarity',
+    EASE_OF_USE = 'ease_of_use',
+}
+
+enum WhatWentWrong {
+    DID_NOT_FIND_SERVICE = 'did_not_find_service',
+    UNCLEAR_ANSWER = 'unclear_answer',
+    TOO_SLOW = 'too_slow',
+    DID_NOT_UNDERSTAND = 'did_not_understand',
+    WRONG_INFORMATION = 'wrong_information',
+    OTHER = 'other',
+}
+
+enum FeedbackStatus {
+    NEW = 'new',
+    REVIEWED = 'reviewed',
+    ACTIONED = 'actioned',
+    DISMISSED = 'dismissed',
+}
+
+interface UserFeedback {
+    feedback_id: string;
+    user_id: string;
+    session_id: string;
+    memory_id: string; // Latest memory entry related to the feedback
+    language_preference: LanguagePreference;
+    prompt_source: PromptSource;
+    helpful: boolean;
+    intended_service_category: IntendedServiceCategory | null;
+    service_match_quality: ServiceMatchQuality | null;
+    what_helped: WhatHelped[] | null; // Multiple choice
+    what_went_wrong: WhatWentWrong[] | null; // Multiple choice
+    comments: string | null; // Optional free-text feedback
+    status: FeedbackStatus;
+    submitted_at: string; // ISO 8601 (UTC)
+}
+```
+
+### Collection: system_metrics
+
+<!-- TODO: Persist metrics / system analytics -->
 
 ## 4. Separation of Responsibilities
 

@@ -6,7 +6,7 @@ with the system.
 """
 
 from databases.mongodb.main import MongoDBCollection, get_collection
-from schemas.users.core import LanguagePreference
+from schemas.users.core import FeedbackPromptState, LanguagePreference
 from shared.time import get_timestamp
 
 
@@ -31,4 +31,23 @@ async def update_user_language_preference(
 	await users_collection.update_one(
 		{'user_id': user_id},
 		{'$set': {'language_preference': language.value}},
+	)
+
+
+async def update_user_feedback_prompt_state(
+	user_id: str, prompt_state: FeedbackPromptState
+) -> None:
+	"""
+	Update the feedback prompt state for a given user.
+	"""
+	users_collection = get_collection(MongoDBCollection.USERS)
+	await users_collection.update_one(
+		{'user_id': user_id},
+		{
+			'$set': {
+				'feedback_prompt_state': prompt_state.model_dump(
+					mode='json'
+				)
+			}
+		},
 	)

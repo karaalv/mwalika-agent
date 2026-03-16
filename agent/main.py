@@ -38,6 +38,8 @@ from schemas.api.responses import (
 )
 from shared.ids import generate_uuid_str
 from shared.logging import LogStyle, cprint
+from users.feedback.eligibility import mark_user_for_feedback_prompt
+from users.feedback.trigger import trigger_feedback_prompt
 from users.service.update import update_user_last_active
 from utils.decorators.exceptions import guard
 
@@ -428,7 +430,14 @@ async def agent_chat(
 				f'Tool Response:\n\n{tool_response}',
 				style=LogStyle.INFO,
 			)
-		# Recursively call agent_chat with tool response as input
+
+		# If corpus lookup tool used, mark
+		# user as eligible for feedback form
+		if state.tool_name == 'corpus_lookup':
+			await mark_user_for_feedback_prompt(user_id)
+
+		# Recursively call agent_chat with tool
+		# response as input
 		return await agent_chat(
 			user_id=user_id,
 			user_input=user_input,
@@ -454,6 +463,12 @@ async def agent_chat(
 	# Update session last active timestamp, etc.
 	await update_session_last_active(session_id=session_id)
 	await update_user_last_active(user_id=user_id)
+
+	# Trigger feedback prompt for user if
+	# eligible
+	await trigger_feedback_prompt(
+		user_id=user_id, connection_id=connection_id
+	)
 
 	state.clear_state()
 

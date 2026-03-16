@@ -177,7 +177,7 @@ async def guard_agent_websocket_input_content(
 ) -> bool:
 	# If input exceeds maximum length, send warning message
 	# but do not perform blocking actions
-	if len(user_input) > MAX_INPUT_LENGTH:
+	if len(user_input) >= MAX_INPUT_LENGTH:
 		message = (
 			f'Input exceeds maximum length of '
 			f'{MAX_INPUT_LENGTH} characters.'
